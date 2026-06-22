@@ -108,6 +108,8 @@ const DESIGN = {
     { palette: { bg: '#0a1622', wall: '#18293c', accent: '#bfe9ff', blob: '#ff7a9e' } }, // 2-2 氷蔵（氷青×紅）
     { palette: { bg: '#1d0f13', wall: '#34181f', accent: '#ff7a4d', blob: '#54d6e0' } }, // 3-1 紅楓の砦（紅葉×橙×浅葱）
     { palette: { bg: '#0a0a14', wall: '#1d1b2a', accent: '#ffcf5c', blob: '#ff5d7a' } }, // 3-2 天守の頂（墨×金×紅）
+    { palette: { bg: '#0b1530', wall: '#1d2c52', accent: '#cfe0ff', blob: '#ff8a4d' } }, // 4-1 浮雲の廊（群青×銀×橙）
+    { palette: { bg: '#0c0a1e', wall: '#231f3e', accent: '#ffe6a0', blob: '#ff4d6d' } }, // 4-2 月天楼の極（漆黒×月金×緋）
   ],
 
   // 目・影など共通

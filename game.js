@@ -45,18 +45,21 @@
     { n: 1, name: '月夜の外郭' },
     { n: 2, name: '城内のからくり' },
     { n: 3, name: '天守へ' },
+    { n: 4, name: '月天楼' },
   ];
   // ---- ステージ（cave.js が形を生成。配色は design の stages・並びは一致）----
   //  code=「章-番」。maxLaunch＝飛ばし回数の上限（💧1個でRU.launchPerDango回 回復）。
   //  括弧内は BFSソルバ(/tmp/minlaunch.js)の理論最小手数。上限はそこへミス分を上乗せ。
   const LEVELS = [
     { code: '1-1', world: 1, name: '月夜の堀',   sub: '見張りを避けて登る', maxLaunch: 18, gen: { worldH: 1800, seed: 11, gapBase: 142, gapVar: 40, meander: 85, yStep: 74, nubCount: 6, hazardCount: 0, dangoCount: 5, bouncyCount: 0, sentryCount: 1, cloakCount: 0, gateHalf: 66 } }, // 最短12
-    { code: '1-2', world: 1, name: '影の廻廊',   sub: 'バンパーで跳ねる',   maxLaunch: 17, gen: { worldH: 2050, seed: 23, gapBase: 134, gapVar: 44, meander: 95, yStep: 72, nubCount: 7, hazardCount: 1, dangoCount: 5, bouncyCount: 3, sentryCount: 1, cloakCount: 1, gateHalf: 62, bumperMove: 70 } }, // 最短11
-    { code: '1-3', world: 1, name: '隠れ里',     sub: '隠れ蓑で忍ぶ',       maxLaunch: 22, gen: { worldH: 2300, seed: 37, gapBase: 126, gapVar: 48, meander: 105, yStep: 70, nubCount: 8, hazardCount: 2, dangoCount: 6, bouncyCount: 1, sentryCount: 3, cloakCount: 2, gateHalf: 60, bumperMove: 60, gateGuard: 1 } }, // 最短14
-    { code: '2-1', world: 2, name: 'からくり堂', sub: '動く足場を乗りこなす', maxLaunch: 22, gen: { worldH: 2200, seed: 41, gapBase: 150, gapVar: 38, meander: 92, yStep: 72, nubCount: 4, hazardCount: 1, dangoCount: 6, bouncyCount: 1, sentryCount: 1, cloakCount: 0, platCount: 4, gateHalf: 60, bumperMove: 60 } }, // 動く台
-    { code: '2-2', world: 2, name: '氷蔵',       sub: '滑る氷壁を渡る',       maxLaunch: 24, gen: { worldH: 2300, seed: 47, gapBase: 140, gapVar: 42, meander: 98, yStep: 70, nubCount: 5, hazardCount: 1, dangoCount: 6, bouncyCount: 1, sentryCount: 1, cloakCount: 1, slipCount: 4, gateHalf: 58, bumperMove: 70, gateGuard: 1 } }, // 滑る壁
-    { code: '3-1', world: 3, name: '紅楓の砦',   sub: '組み合わせる',       maxLaunch: 23, gen: { worldH: 2550, seed: 51, gapBase: 132, gapVar: 46, meander: 108, yStep: 70, nubCount: 8, hazardCount: 3, dangoCount: 6, bouncyCount: 3, sentryCount: 2, cloakCount: 1, gateHalf: 57, bumperMove: 80, gateGuard: 1, gateMover: 1 } }, // 最短17
-    { code: '3-2', world: 3, name: '天守の頂',   sub: '総合・見張り乱立',   maxLaunch: 27, gen: { worldH: 2900, seed: 67, gapBase: 130, gapVar: 48, meander: 110, yStep: 68, nubCount: 10, hazardCount: 4, dangoCount: 7, bouncyCount: 5, sentryCount: 3, cloakCount: 2, gateHalf: 53, bumperMove: 95, gateGuard: 2, gateMover: 1 } }, // 最短19
+    { code: '1-2', world: 1, name: '影の廻廊',   sub: 'バンパーで跳ねる',   maxLaunch: 16, gen: { worldH: 2050, seed: 23, gapBase: 134, gapVar: 44, meander: 95, yStep: 72, nubCount: 7, hazardCount: 1, dangoCount: 5, bouncyCount: 3, sentryCount: 1, cloakCount: 1, gateHalf: 62, bumperMove: 70 } }, // 最短11
+    { code: '1-3', world: 1, name: '隠れ里',     sub: '隠れ蓑で忍ぶ',       maxLaunch: 19, gen: { worldH: 2300, seed: 37, gapBase: 126, gapVar: 48, meander: 105, yStep: 70, nubCount: 8, hazardCount: 2, dangoCount: 6, bouncyCount: 1, sentryCount: 3, cloakCount: 2, gateHalf: 60, bumperMove: 60, gateGuard: 1 } }, // 最短14
+    { code: '2-1', world: 2, name: 'からくり堂', sub: '動く足場を乗りこなす', maxLaunch: 20, gen: { worldH: 2200, seed: 41, gapBase: 150, gapVar: 38, meander: 92, yStep: 72, nubCount: 4, hazardCount: 1, dangoCount: 6, bouncyCount: 1, sentryCount: 1, cloakCount: 0, platCount: 4, gateHalf: 60, bumperMove: 60 } }, // 最短15・動く台
+    { code: '2-2', world: 2, name: '氷蔵',       sub: '滑る氷壁を渡る',       maxLaunch: 20, gen: { worldH: 2300, seed: 47, gapBase: 140, gapVar: 42, meander: 98, yStep: 70, nubCount: 5, hazardCount: 1, dangoCount: 6, bouncyCount: 1, sentryCount: 1, cloakCount: 1, slipCount: 4, gateHalf: 58, bumperMove: 70, gateGuard: 1 } }, // 最短14・滑る壁
+    { code: '3-1', world: 3, name: '紅楓の砦',   sub: '組み合わせる',       maxLaunch: 21, gen: { worldH: 2550, seed: 51, gapBase: 132, gapVar: 46, meander: 108, yStep: 70, nubCount: 8, hazardCount: 3, dangoCount: 6, bouncyCount: 3, sentryCount: 2, cloakCount: 1, gateHalf: 57, bumperMove: 80, gateGuard: 1, gateMover: 1 } }, // 最短17
+    { code: '3-2', world: 3, name: '天守の頂',   sub: '総合・見張り乱立',   maxLaunch: 23, gen: { worldH: 2900, seed: 67, gapBase: 130, gapVar: 48, meander: 110, yStep: 68, nubCount: 10, hazardCount: 4, dangoCount: 7, bouncyCount: 5, sentryCount: 3, cloakCount: 2, gateHalf: 53, bumperMove: 95, gateGuard: 2, gateMover: 1 } }, // 最短19
+    { code: '4-1', world: 4, name: '浮雲の廊',     sub: '動く足場と見張りの嵐', maxLaunch: 24, gen: { worldH: 2700, seed: 73, gapBase: 126, gapVar: 48, meander: 110, yStep: 68, nubCount: 9, hazardCount: 4, dangoCount: 6, bouncyCount: 3, sentryCount: 3, cloakCount: 2, platCount: 3, gateHalf: 52, bumperMove: 100, gateGuard: 2, gateMover: 1 } }, // 最短20・全ギミック
+    { code: '4-2', world: 4, name: '月天楼の極', sub: 'すべての試練',       maxLaunch: 28, gen: { worldH: 3100, seed: 107, gapBase: 122, gapVar: 52, meander: 116, yStep: 66, nubCount: 11, hazardCount: 5, dangoCount: 7, bouncyCount: 4, sentryCount: 3, cloakCount: 2, platCount: 2, slipCount: 3, gateHalf: 50, bumperMove: 110, gateGuard: 2, gateMover: 2 } }, // 最短24・最難
   ];
 
   // ---- 状態 ----
