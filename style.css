@@ -1,0 +1,156 @@
+/* ============================================================
+   のぼれRUIVOSくん — UI（ステージと同じ作法：フラット・ベタ塗り＋accent縁取り）
+   グラデ／ぼかし／グロー無し。色は design.js stages のパレットを
+   そのまま使用（game.js が読み込み時に CSS 変数へ流し込む）。
+   既定値＝ステージ1「月夜の堀」。
+   ============================================================ */
+:root {
+  --bg:     #0a1230;   /* 夜闇 */
+  --wall:   #1b2750;   /* 石垣＝パネル */
+  --accent: #9fc4ff;   /* 月光＝縁取り・見出し */
+  --blob:   #ff5a47;   /* 朱＝主ボタン（キャラ色） */
+  --danger: #ff5238;
+  --veil:   rgba(10, 18, 48, 0.86);  /* オーバーレイの覆い（bgのベタ） */
+  --text:   #ffffff;
+  --dim:    rgba(255, 255, 255, 0.66);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic",
+    "YuGothic", "Meiryo", system-ui, sans-serif;
+  color: var(--text);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#game {
+  display: block;
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- HUD（ジャンプ回数だけ。作法はステージと同じ＝ベタ塗り＋accent縁取り・ぼかし無し）---------- */
+#hud {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  padding: max(12px, env(safe-area-inset-top)) 14px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ジャンプ回数＝画面の主役ピル */
+.jumps {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  background: var(--wall);
+  border: 2.5px solid var(--accent);
+  border-radius: 999px;
+  padding: 7px 16px 8px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.28);   /* フラットな影（ぼかし無し） */
+}
+.jumps-ico { align-self: center; color: var(--accent); font-size: 17px; font-weight: 900; line-height: 1; }
+.jumps-n   { color: var(--text); font-size: 26px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; min-width: 1.1em; text-align: center; }
+.jumps-cap { color: var(--dim); font-size: 11px; font-weight: 800; letter-spacing: 1px; }
+/* のこりわずか＝警告（朱でベタ＋ふくらむ） */
+.jumps.low { background: var(--danger); border-color: var(--danger); animation: jumpPulse 0.6s ease-in-out infinite; }
+.jumps.low .jumps-ico, .jumps.low .jumps-cap { color: #fff; }
+@keyframes jumpPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+/* ---------- Overlays ---------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 10;
+  background: var(--veil);
+  overflow-y: auto;                      /* 小型端末でカードが画面より高くてもスクロールで全体に届く */
+  -webkit-overflow-scrolling: touch;     /* iOS の慣性スクロール */
+}
+
+.card {
+  width: min(440px, 92vw);
+  margin: auto;                          /* はみ出す時もボタンが見切れない（flex中央寄せ＋スクロール両立） */
+  background: var(--wall);
+  border: 3px solid var(--accent);
+  border-radius: 22px;
+  padding: 30px 24px 24px;
+  text-align: center;
+}
+
+.pop { animation: pop 0.32s cubic-bezier(0.18, 1.4, 0.4, 1) both; }
+@keyframes pop {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.logo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.logo-jp {
+  font-size: clamp(22px, 7vw, 40px);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.15;
+  white-space: nowrap;
+  color: var(--accent);
+}
+
+.lead { font-size: 15px; line-height: 1.8; color: var(--dim); margin: 6px 0 20px; }
+.lead b { color: var(--accent); }
+
+.bigbtn {
+  border: none;
+  background: var(--blob);
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 900;
+  padding: 14px 34px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.32);   /* フラットな影（ぼかし無し） */
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.bigbtn:active { transform: translateY(5px); box-shadow: 0 0 0 rgba(0, 0, 0, 0.32); }
+
+.textbtn {
+  display: block;
+  margin: 12px auto 0;
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.textbtn:active { color: var(--accent); }
+
+.clear-title {
+  font-size: 30px;
+  font-weight: 900;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+.clear-stats {
+  font-size: 16px;
+  line-height: 1.9;
+  color: var(--text);
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+.clear-stats b { color: var(--accent); }

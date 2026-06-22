@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0a1230" />
+<title>のぼれRUIVOSくん</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- HUD：ジャンプ回数だけ（他は出さない） -->
+  <div id="hud" class="hidden">
+    <div id="jumps" class="jumps" title="のこりジャンプ回数（💧で回復）">
+      <span class="jumps-ico">↗</span>
+      <span id="jumps-n" class="jumps-n">0</span>
+      <span class="jumps-cap">ジャンプ</span>
+    </div>
+  </div>
+
+  <!-- タイトル -->
+  <div id="title" class="overlay">
+    <div class="card pop">
+      <div class="logo">
+        <span class="logo-jp">のぼれRUIVOSくん</span>
+      </div>
+      <p class="lead">引っぱって、頂上を目指そう。</p>
+      <button id="btn-start" class="bigbtn">▶ あそぶ</button>
+    </div>
+  </div>
+
+  <!-- ステージクリア -->
+  <div id="clear" class="overlay hidden">
+    <div class="card pop">
+      <div class="clear-title">ステージクリア！</div>
+      <div id="clear-stats" class="clear-stats"></div>
+      <button id="btn-next" class="bigbtn">つぎへ ▶</button>
+      <button id="btn-replay" class="textbtn">もういちど</button>
+    </div>
+  </div>
+
+  <!-- 全クリア -->
+  <div id="allclear" class="overlay hidden">
+    <div class="card pop">
+      <div class="clear-title">ぜんステージ制覇！</div>
+      <p class="lead">RUIVOSくん、頂上とうたつ！<br>おつかれさま、また会おう。</p>
+      <div id="allclear-stats" class="clear-stats"></div>
+      <button id="btn-home" class="bigbtn">タイトルへ</button>
+    </div>
+  </div>
+
+  <script src="design.js"></script>
+  <script src="cave.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
