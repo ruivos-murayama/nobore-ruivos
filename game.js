@@ -112,6 +112,8 @@
     launches = level ? level.maxLaunch : 0; outMsg = 0;   // 飛ばし回数は毎リスポーン満タンに戻す
     winning = false; winT = 0; winFlash = 0; winRings = [];   // 到達演出のリセット
     if (level && level.cloaks) for (const c of level.cloaks) c.used = false;
+    if (level && level.dango) for (const d of level.dango) d.got = false;        // 雫も毎リスポーンで復活
+    if (level && level.sentries) for (const s of level.sentries) s.hot = false;  // 見張りの警戒色をリセット
     cam.y = clampCamY(blob.y); cam.vy.v = 0; cam.zoom = 1;
   }
   function die() {
@@ -193,6 +195,7 @@
     sfx.clear(); burstRing(level.goal.x, level.goal.y, level.palette.accent, 34);
     gameState = 'clear';
     const got = dangoGot(), tot = level.dango.length;
+    totalDango += got;   // 累計はクリア時に加算（リスポーンでの再取得を二重計上しない）
     document.getElementById('clear-stats').innerHTML =
       `💧 雫 <b>${got}</b> / ${tot}${got === tot ? '　<b style="color:var(--blob)">コンプリート！</b>' : ''}<br>挑戦かいすう ${tries + 1}`;
     show('clear');
@@ -307,7 +310,7 @@
     }
     if (cloakT > 0) cloakT = Math.max(0, cloakT - h);
     for (const d of level.dango) if (!d.got && len(blob.x - d.x, blob.y - d.y) < R + 14) {
-      d.got = true; totalDango++;
+      d.got = true;
       launches += RU.launchPerDango;   // 💧回収で飛ばし回数を少し回復（リスク報酬）
       combo = blob.stuck ? 1 : combo + 1;
       beep(D.combo.base + Math.min(combo, 8) * D.combo.pitchStep, 0.09, 'square', 0.13);
