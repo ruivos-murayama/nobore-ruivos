@@ -46,11 +46,11 @@
   //  括弧内は BFSソルバ(/tmp/minlaunch.js)が出した“理論最小”回数＝最短ルートの手数。
   //  上限はそこへ人間のミス分を上乗せした値。締めたい→maxLaunchを下げる／緩めたい→上げる。
   const LEVELS = [
-    { name: '月夜の堀',   sub: '見張りを避けて登る', maxLaunch: 18, gen: { worldH: 1800, seed: 11, gapBase: 142, gapVar: 40, meander: 85, yStep: 74, nubCount: 6, hazardCount: 0, dangoCount: 5, bouncyCount: 0, sentryCount: 1, cloakCount: 0 } }, // 最短12
-    { name: '影の廻廊',   sub: 'バンパーで跳ねる',   maxLaunch: 17, gen: { worldH: 2050, seed: 23, gapBase: 134, gapVar: 44, meander: 95, yStep: 72, nubCount: 7, hazardCount: 1, dangoCount: 5, bouncyCount: 3, sentryCount: 1, cloakCount: 1 } }, // 最短11
-    { name: '隠れ里',     sub: '隠れ蓑で忍ぶ',       maxLaunch: 22, gen: { worldH: 2300, seed: 37, gapBase: 126, gapVar: 48, meander: 105, yStep: 70, nubCount: 8, hazardCount: 2, dangoCount: 6, bouncyCount: 1, sentryCount: 3, cloakCount: 2 } }, // 最短14
-    { name: '紅楓の砦',   sub: '組み合わせる',       maxLaunch: 23, gen: { worldH: 2550, seed: 51, gapBase: 132, gapVar: 46, meander: 108, yStep: 70, nubCount: 8, hazardCount: 3, dangoCount: 6, bouncyCount: 3, sentryCount: 2, cloakCount: 1 } }, // 最短17
-    { name: '天守の頂',   sub: '総合・見張り乱立',   maxLaunch: 27, gen: { worldH: 2900, seed: 67, gapBase: 130, gapVar: 48, meander: 110, yStep: 68, nubCount: 10, hazardCount: 4, dangoCount: 7, bouncyCount: 5, sentryCount: 3, cloakCount: 2 } }, // 最短19
+    { name: '月夜の堀',   sub: '見張りを避けて登る', maxLaunch: 18, gen: { worldH: 1800, seed: 11, gapBase: 142, gapVar: 40, meander: 85, yStep: 74, nubCount: 6, hazardCount: 0, dangoCount: 5, bouncyCount: 0, sentryCount: 1, cloakCount: 0, gateHalf: 66 } }, // 最短12／頂上:広いゲート
+    { name: '影の廻廊',   sub: 'バンパーで跳ねる',   maxLaunch: 17, gen: { worldH: 2050, seed: 23, gapBase: 134, gapVar: 44, meander: 95, yStep: 72, nubCount: 7, hazardCount: 1, dangoCount: 5, bouncyCount: 3, sentryCount: 1, cloakCount: 1, gateHalf: 62, bumperMove: 70 } }, // 最短11／頂上:動くバンパー
+    { name: '隠れ里',     sub: '隠れ蓑で忍ぶ',       maxLaunch: 22, gen: { worldH: 2300, seed: 37, gapBase: 126, gapVar: 48, meander: 105, yStep: 70, nubCount: 8, hazardCount: 2, dangoCount: 6, bouncyCount: 1, sentryCount: 3, cloakCount: 2, gateHalf: 60, bumperMove: 60, gateGuard: 1 } }, // 最短14／頂上:ゲート番1
+    { name: '紅楓の砦',   sub: '組み合わせる',       maxLaunch: 23, gen: { worldH: 2550, seed: 51, gapBase: 132, gapVar: 46, meander: 108, yStep: 70, nubCount: 8, hazardCount: 3, dangoCount: 6, bouncyCount: 3, sentryCount: 2, cloakCount: 1, gateHalf: 57, bumperMove: 80, gateGuard: 1, gateMover: 1 } }, // 最短17／頂上:動くスパイク
+    { name: '天守の頂',   sub: '総合・見張り乱立',   maxLaunch: 27, gen: { worldH: 2900, seed: 67, gapBase: 130, gapVar: 48, meander: 110, yStep: 68, nubCount: 10, hazardCount: 4, dangoCount: 7, bouncyCount: 5, sentryCount: 3, cloakCount: 2, gateHalf: 53, bumperMove: 95, gateGuard: 2, gateMover: 1 } }, // 最短19／頂上:総力戦
   ];
 
   // ---- 状態 ----
@@ -95,7 +95,7 @@
   function loadLevel(i) {
     levelIndex = i; level = LEVELS[i];
     const g = CAVE.buildCave(level.gen, COL);
-    level.walls = g.walls; level.hazards = g.hazards; level.bouncy = g.bouncy; level.boosts = g.boosts; level.sentries = g.sentries;
+    level.walls = g.walls; level.hazards = g.hazards; level.bouncy = g.bouncy; level.boosts = g.boosts; level.sentries = g.sentries; level.movers = g.movers || [];
     level.cloaks = g.cloaks ? g.cloaks.map(c => ({ x: c.x, y: c.y, used: false })) : [];
     level.dango = g.dango.map(d => ({ x: d.x, y: d.y, got: false }));
     level.start = g.start; level.goal = g.goal; level.worldH = g.worldH;
@@ -196,9 +196,21 @@
     gameState = 'clear';
     const got = dangoGot(), tot = level.dango.length;
     totalDango += got;   // 累計はクリア時に加算（リスポーンでの再取得を二重計上しない）
+    document.getElementById('clear-kicker').textContent = 'STAGE ' + (levelIndex + 1);
+    document.getElementById('clear-sub').textContent = level.name;
     document.getElementById('clear-stats').innerHTML =
-      `💧 雫 <b>${got}</b> / ${tot}${got === tot ? '　<b style="color:var(--blob)">コンプリート！</b>' : ''}<br>挑戦かいすう ${tries + 1}`;
+      pipsHTML(got, tot) +
+      '<div class="stats">' +
+        `<div class="stat-row"><span class="k">しずく</span><span class="v">${got} / ${tot}</span></div>` +
+        `<div class="stat-row"><span class="k">ちょうせん</span><span class="v">${tries + 1}</span></div>` +
+      '</div>' +
+      (got === tot ? '<div class="badge">PERFECT</div>' : '');
     show('clear');
+  }
+  function pipsHTML(got, tot) {  // しずくを水滴ピップで（絵文字なし）
+    let s = '<div class="pips">';
+    for (let i = 0; i < tot; i++) s += '<span class="pip' + (i < got ? ' full' : '') + '"></span>';
+    return s + '</div>';
   }
   function dangoGot() { return level.dango.filter(d => d.got).length; }
 
@@ -255,6 +267,14 @@
     blob.px = blob.x; blob.py = blob.y;
     simTime += h;  // 首振りは常に進む（死亡演出中も止めない）
     if (!alive) { updateSquash(h); ageParticles(h); return; }
+    // 動くバンパー：左右に往復（基準bxからmove幅で）
+    for (const b of level.bouncy) if (b.move) b.x = b.bx + b.move * Math.sin(simTime * b.mspeed + b.mphase);
+    // 動く致死スパイク：位置更新＋衝突（飛行中も貼り付き中も即ミス）
+    for (const m of level.movers) {
+      const s = Math.sin(simTime * m.speed + m.phase);
+      m.cx = m.x0 + m.ax * m.amp * s; m.cy = m.y0 + m.ay * m.amp * s;
+      if (len(blob.x - m.cx, blob.y - m.cy) < R + m.r) { die(); return; }
+    }
     if (!blob.stuck) {
       blob.vy += P.gravity * h;
       const dmp = Math.pow(P.airDamping, h); blob.vx *= dmp; blob.vy *= dmp;
@@ -432,7 +452,7 @@
     ctx.globalAlpha = 1;
 
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, COL, level.worldH); ctx.clip();
-    drawSentryCones(); drawCave(); drawBouncy(); drawHazards(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes();
+    drawSentryCones(); drawCave(); drawBouncy(); drawHazards(); drawMovers(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes();
     let predicted = null;
     if (gameState === 'play' && aim.active) { const a = aimVel(); const tr = simTrajectory(a.vx, a.vy); predicted = tr.land; drawTrajectory(tr, a.charge); }
     if (winning) drawWinRings();
@@ -479,6 +499,20 @@
     }
   }
   function drawHazards() { for (const hz of level.hazards) { poly(hz); ctx.fillStyle = hexA(D.danger, 0.9); ctx.fill(); ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.strokeStyle = '#ffffff'; ctx.globalAlpha = 0.5; ctx.stroke(); ctx.globalAlpha = 1; } }
+  function drawMovers() {  // 動く致死スパイク（往復するトゲ玉）＋スライド軌道
+    if (!level.movers) return;
+    const t = performance.now() / 200;
+    for (const m of level.movers) {
+      ctx.strokeStyle = hexA(D.danger, 0.18); ctx.lineWidth = 3; ctx.setLineDash([4, 7]);
+      ctx.beginPath(); ctx.moveTo(m.x0 - m.amp, m.y0); ctx.lineTo(m.x0 + m.amp, m.y0); ctx.stroke(); ctx.setLineDash([]);
+      ctx.save(); ctx.translate(m.cx, m.cy); ctx.rotate(t);
+      ctx.fillStyle = D.danger; ctx.beginPath();
+      for (let i = 0; i < 16; i++) { const a = (i / 16) * 6.28, rr = i % 2 ? m.r + 5 : m.r * 0.6; const px = Math.cos(a) * rr, py = Math.sin(a) * rr; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(0, 0, m.r * 0.32, 0, 6.28); ctx.fill();
+      ctx.restore();
+    }
+  }
   function drawBouncy() {  // バンパー（ピンボール式）
     for (const b of level.bouncy) {
       const pu = 1 + Math.sin(performance.now() / 220 + b.x) * 0.12;
@@ -652,7 +686,7 @@
   bindTap('btn-replay', () => { gameState = 'play'; loadLevel(levelIndex); show('play'); });
   bindTap('btn-next', () => {
     if (levelIndex + 1 < LEVELS.length) { gameState = 'play'; loadLevel(levelIndex + 1); show('play'); }
-    else { gameState = 'allclear'; document.getElementById('allclear-stats').innerHTML = `💧 あつめた雫 ${totalDango}<br>そう挑戦かいすう ${totalTries}`; show('allclear'); }
+    else { gameState = 'allclear'; document.getElementById('allclear-stats').innerHTML = '<div class="stats">' + `<div class="stat-row"><span class="k">あつめた しずく</span><span class="v">${totalDango}</span></div>` + `<div class="stat-row"><span class="k">そう ちょうせん</span><span class="v">${totalTries}</span></div>` + '</div>'; show('allclear'); }
   });
   bindTap('btn-home', () => { gameState = 'title'; setSkin(D.stages[0].palette); show('title'); });
 

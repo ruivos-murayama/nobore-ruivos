@@ -138,7 +138,7 @@
     //  ＝「光に触れただけクリア」を解消し、狙って決める達成感に。開口は広め（詰みではなく“狙い”）。
     //  形は下向きに口を開けた凹ポリゴン（∩にスリット）。出口はくぼみの奥にぶら下げる。
     const roomCx = clampC(centerX(top + 70), 175, COL - 175);
-    const gateHalf = 60;                  // ゲート開口の半幅（120px＝キャラ径の約2.5倍／広め）
+    const gateHalf = p.gateHalf || 60;    // ★ゲート開口の半幅（狭いほど難しい。ステージで段階的に絞る）
     const outerHalf = gateHalf + 78;      // くぼみブロックの外半幅（リップの張り出し）
     const cupRoofY = top - 52;            // ブロック上端（天井際）
     const pocketRoofY = top - 2;          // くぼみ内側の天井（出口はこの下にぶら下がる）
@@ -208,7 +208,9 @@
 
     // 頂上のバンパー：広間に1つ置き、跳ね返してゲートへ回り込む“バンクショット”ルートを作る。
     //  踏み台の反対側・ゲートの下方に配置（中央の直接射し込みは塞がない）。
-    bouncy.push({ x: clampC(roomCx - ledgeSide * 96, 100, COL - 100), y: top + 176, r: 28, summit: true });
+    //  bumperMove>0 で左右に往復＝動く的（バンクの読みが要る）。bx=基準x（ソルバはこの静止位置で評価）。
+    const sbx = clampC(roomCx - ledgeSide * 96, 100, COL - 100);
+    bouncy.push({ x: sbx, bx: sbx, y: top + 176, r: 28, summit: true, move: p.bumperMove || 0, mspeed: 1.5, mphase: rng() * 6.28 });
 
     // 上昇気流（ブースト帯）：入ると一気に加速する縦の流れ
     const boosts = [];
@@ -226,10 +228,40 @@
     for (let i = 0; i < sentryCount; i++) {
       const yy = top + 340 + ((i + 0.5) / Math.max(1, sentryCount)) * (bot - top - 600);
       const onLeft = (i % 2 === 0);
-      const ex = onLeft ? centerX(yy) - halfGap(yy) + 12 : centerX(yy) + halfGap(yy) - 12;
+      // 実際の壁エッジ（nub/広間の拡張を反映した leftPts/rightPts）の最寄り点から内側へ置く。
+      //  ※ 元の式は素の centerX±halfGap 基準で、nubの出っ張りに埋まって視線が常時遮られていた（見張りが反応しないバグ）。
+      const pts = onLeft ? leftPts : rightPts;
+      let bi = 0, bd = Infinity;
+      for (let k = 0; k < pts.length; k++) { const dd = Math.abs(pts[k].y - yy); if (dd < bd) { bd = dd; bi = k; } }
+      const ex = clampC(onLeft ? pts[bi].x + 18 : pts[bi].x - 18, 28, COL - 28);  // 壁の内側18px・必ず画面内＝埋まらない
+      const ey = pts[bi].y;
       const tilt = (rng() < 0.5 ? -1 : 1) * 0.5;          // 上下に傾け、横の逃げ場を残す
       const base = onLeft ? tilt : Math.PI - tilt;        // コリドー内側を向く
-      sentries.push({ x: ex, y: yy, base, phase: rng() * 6.28 });
+      sentries.push({ x: ex, y: ey, base, phase: rng() * 6.28 });
+    }
+
+    // 頂上の見張り（ゲート番）：広間の壁際から「ゲート口の少し下」を掃く＝最後の射し込みに見張りの間を読む要素。
+    //  踏み台(下)はコーンの外＝狙いは付けられる。首振りの隙/隠れ蓑で突破する。
+    const guardCount = p.gateGuard || 0;
+    for (let i = 0; i < guardCount; i++) {
+      const onLeft = (i % 2 === 0);
+      const pts = onLeft ? leftPts : rightPts;
+      const gy = top + 150;
+      let bi = 0, bd = Infinity;
+      for (let k = 0; k < pts.length; k++) { const dd = Math.abs(pts[k].y - gy); if (dd < bd) { bd = dd; bi = k; } }
+      const gx = clampC(onLeft ? pts[bi].x + 18 : pts[bi].x - 18, 28, COL - 28);
+      const gyy = pts[bi].y;
+      const base = Math.atan2((top + 86) - gyy, roomCx - gx);   // ゲート口の手前を向く
+      sentries.push({ x: gx, y: gyy, base, phase: rng() * 6.28, guard: true });
+    }
+
+    // 頂上の動く致死スパイク：ゲート口の少し下を左右に往復＝通る窓を読む“動く障害”。
+    //  振幅は端で必ず広い開口が残る大きさ（＝詰まない／ソルバは無視し、幾何の到達性は別途保証）。
+    const movers = [];
+    const moverCount = p.gateMover || 0;
+    for (let i = 0; i < moverCount; i++) {
+      movers.push({ x0: roomCx, y0: cupMouthY + 44 + i * 48, cx: roomCx, cy: cupMouthY + 44 + i * 48,
+        ax: 1, ay: 0, amp: gateHalf + 30, speed: 1.5 + i * 0.5, phase: i * 1.9, r: 15 });
     }
 
     // 隠れ蓑の雫：見張りの少し手前（下）に置き、拾って透明化→視線を突破できるように
@@ -243,7 +275,7 @@
       cloaks.push({ x: clampC(centerX(yy) + (rng() - 0.5) * 36, 120, COL - 120), y: yy });
     }
 
-    return { walls, hazards, bouncy, boosts, sentries, cloaks, dango, start, goal, worldH: H };
+    return { walls, hazards, bouncy, boosts, sentries, cloaks, movers, dango, start, goal, worldH: H };
   }
 
   const CAVE = { buildCave, circlePoly, pointInPoly, mulberry32, segSeg, segPoly };

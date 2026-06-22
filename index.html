@@ -15,7 +15,7 @@
 
   <!-- HUD：ジャンプ回数だけ（他は出さない） -->
   <div id="hud" class="hidden">
-    <div id="jumps" class="jumps" title="のこりジャンプ回数（💧で回復）">
+    <div id="jumps" class="jumps" title="のこりジャンプ回数（しずくで回復）">
       <span class="jumps-ico">↗</span>
       <span id="jumps-n" class="jumps-n">0</span>
       <span class="jumps-cap">ジャンプ</span>
@@ -36,7 +36,9 @@
   <!-- ステージクリア -->
   <div id="clear" class="overlay hidden">
     <div class="card pop">
-      <div class="clear-title">ステージクリア！</div>
+      <div id="clear-kicker" class="kicker">STAGE 1</div>
+      <div class="clear-title">STAGE CLEAR</div>
+      <div id="clear-sub" class="clear-sub">月夜の堀</div>
       <div id="clear-stats" class="clear-stats"></div>
       <button id="btn-next" class="bigbtn">つぎへ ▶</button>
       <button id="btn-replay" class="textbtn">もういちど</button>
@@ -46,7 +48,8 @@
   <!-- 全クリア -->
   <div id="allclear" class="overlay hidden">
     <div class="card pop">
-      <div class="clear-title">ぜんステージ制覇！</div>
+      <div class="kicker">CONGRATULATIONS</div>
+      <div class="clear-title">ALL CLEAR</div>
       <p class="lead">RUIVOSくん、頂上とうたつ！<br>おつかれさま、また会おう。</p>
       <div id="allclear-stats" class="clear-stats"></div>
       <button id="btn-home" class="bigbtn">タイトルへ</button>
