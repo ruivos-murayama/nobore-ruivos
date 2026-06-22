@@ -63,7 +63,7 @@
   let particles = [], spores = [], trail = 0;
   let alive = true, deathT = 0, tries = 0;
   let launches = 0, outMsg = 0;                 // 飛ばし回数：のこり / 「もう とべない…」演出タイマー
-  let winning = false, winT = 0, winFlash = 0, winSpark = 0, winRings = [], winGX = 0, winGY = 0;  // 到達演出
+  let winning = false, winT = 0, winFlash = 0, winSpark = 0, winRings = [], winGX = 0, winGY = 0, winHold = 0;  // 到達演出
   let combo = 0, texts = [], boostT = 0, bumpChain = 0, freeze = 0, popFlash = 0;
   let alert = 0, simTime = 0, alarmPing = 0;   // ステルス：発見メーター / 首振りの時刻 / 警告音タイマー
   let cloakT = 0;                              // 隠れ蓑：残り透明時間
@@ -110,7 +110,7 @@
     eyes.wide = 0; aim.active = false; alive = true; timeScale = 1; timeScaleTarget = 1; combo = 0; bumpChain = 0; freeze = 0; popFlash = 0;
     alert = 0; alarmPing = 0; cloakT = 0;   // simTime は連続させる（首振りは止めない）
     launches = level ? level.maxLaunch : 0; outMsg = 0;   // 飛ばし回数は毎リスポーン満タンに戻す
-    winning = false; winT = 0; winFlash = 0; winRings = [];   // 到達演出のリセット
+    winning = false; winT = 0; winFlash = 0; winRings = []; winHold = 0;   // 到達演出のリセット
     if (level && level.cloaks) for (const c of level.cloaks) c.used = false;
     if (level && level.dango) for (const d of level.dango) d.got = false;        // 雫も毎リスポーンで復活
     if (level && level.sentries) for (const s of level.sentries) s.hot = false;  // 見張りの警戒色をリセット
@@ -153,31 +153,40 @@
   const WIN_DUR = 1.15;   // 吸い込み→着弾の閃光→短い余韻 → STAGE CLEAR 画面（テキスト演出は無し）
   function winStart() {
     if (winning) return;
-    winning = true; winT = 0; winFlash = 0; winSpark = 0; winRings = [];
+    winning = true; winT = 0; winFlash = 0; winSpark = 0; winRings = []; winHold = 0;
     winGX = level.goal.x; winGY = level.goal.y;
     aim.active = false; timeScaleTarget = 0.3; eyes.wide = 1; combo = 0; bumpChain = 0;
     const hudEl = document.getElementById('hud'); if (hudEl) hudEl.classList.add('hidden');  // 演出中はHUDを隠す
     beep(660, 0.14, 'sine', 0.16, 1240);   // 吸い込みの予兆
   }
-  function fireWinBurst() {   // 着弾の“パッ”：閃光・震え・衝撃波・大量パーティクル・和音
-    winFlash = 1; addTrauma(0.95); flash = 0; popFlash = 0;
+  function winSound() {   // 豪華な到達スティンガー：重低音のドン＋厚い和音＋上昇＋きらめきカスケード
+    beep(150, 0.55, 'sine', 0.34, 58);                       // 体（重低音のドン）
+    beep(84, 0.5, 'triangle', 0.24, 48);
+    [392, 523, 659, 784].forEach(f => beep(f, 0.6, 'triangle', 0.085, f));   // 厚い和音（同時）
+    [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => setTimeout(() => beep(f, 0.4, 'triangle', 0.14, f * 1.4), 70 + i * 52));  // 上昇アルペジオ
+    [2093, 2637, 3136, 2637, 3520].forEach((f, i) => setTimeout(() => beep(f, 0.5, 'sine', 0.065, f * 1.15), 250 + i * 66));        // きらめき
+  }
+  function fireWinBurst() {   // 着弾の“ドン”：白閃光・大きな震え・白衝撃波・ズームパンチ・大量パーティクル・豪華音
+    winFlash = 1; addTrauma(1.05); flash = 0; popFlash = 0;
     blob.x = winGX; blob.y = winGY; blob.px = winGX; blob.py = winGY;
-    impulseSquash(0, 1.8, 0.5);
-    for (let i = 0; i < 3; i++) winRings.push({ r: 6, life: 1, w: 6 - i * 1.5 });
-    for (let i = 0; i < 48; i++) { const a = rand(0, 6.28), s = rand(120, 540); particles.push({ x: winGX, y: winGY, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color: i % 3 === 0 ? '#ffffff' : i % 3 === 1 ? level.palette.accent : level.palette.blob, size: rand(3, 8) }); }
-    burstRing(winGX, winGY, '#ffffff', 24);
-    [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => beep(f, 0.5, 'triangle', 0.16, f * 1.5), i * 70));
-    setTimeout(() => beep(2100, 0.55, 'sine', 0.08, 2700), 200);
-    vibe([16, 36, 16, 70]);
+    impulseSquash(0, 1.95, 0.45);
+    cam.zoom *= 1.2; cam.vz.v = 0;                             // カメラのズームパンチ（戻りはsmoothDampが処理）
+    winRings.push({ r: 8, life: 1, w: 8, white: true });       // 太い白の衝撃波
+    for (let i = 0; i < 3; i++) winRings.push({ r: 6, life: 1, w: 5 - i * 1.3 });
+    for (let i = 0; i < 62; i++) { const a = rand(0, 6.28), s = rand(140, 640); particles.push({ x: winGX, y: winGY, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color: i % 3 === 0 ? '#ffffff' : i % 3 === 1 ? level.palette.accent : level.palette.blob, size: rand(3, 9) }); }
+    burstRing(winGX, winGY, '#ffffff', 28);
+    winSound();
+    vibe([24, 40, 16, 90]);
   }
   function updateWin(dt) {
+    if (winHold > 0) { winHold -= dt; winFlash = 1; return; }   // ヒットストップ：完全停止（白閃光を最大で保持）
     const prev = winT; winT += dt;
     if (winT < 0.18) {  // フェーズA：出口へスッと吸い込まれる＋周囲から吸引粒子
       const k = 1 - Math.pow(0.0008, dt / 0.06);
       blob.x = lerp(blob.x, winGX, k); blob.y = lerp(blob.y, winGY, k); blob.px = blob.x; blob.py = blob.y;
       if (Math.random() < 0.9) { const a = rand(0, 6.28), d = rand(46, 96); particles.push({ x: winGX + Math.cos(a) * d, y: winGY + Math.sin(a) * d, vx: -Math.cos(a) * 260, vy: -Math.sin(a) * 260, life: 1, color: level.palette.accent, size: rand(2, 4) }); }
     }
-    if (prev < 0.18 && winT >= 0.18) fireWinBurst();   // 着弾（1回）
+    if (prev < 0.18 && winT >= 0.18) { fireWinBurst(); winHold = 0.075; return; }   // 着弾→一瞬止めて“ドン”を効かせる
     if (winT >= 0.18) {  // フェーズB：余韻（きらめき上昇）
       timeScaleTarget = 1; winSpark += dt;
       const rate = winT < 1.0 ? 0.025 : 0.05;
@@ -193,7 +202,6 @@
 
   function onClear() {
     winning = false;
-    sfx.clear(); burstRing(level.goal.x, level.goal.y, level.palette.accent, 34);
     gameState = 'clear';
     const got = dangoGot(), tot = level.dango.length;
     totalDango += got;   // 累計はクリア時に加算（リスポーンでの再取得を二重計上しない）
@@ -465,7 +473,12 @@
     drawAlert();
     if (flash > 0) { ctx.fillStyle = hexA(D.danger, flash * 0.5); ctx.fillRect(0, 0, VW, VH); }
     if (popFlash > 0 && level) { ctx.fillStyle = hexA(level.palette.accent, popFlash * 0.35); ctx.fillRect(0, 0, VW, VH); }
-    if (winFlash > 0 && level) { ctx.fillStyle = hexA(level.palette.accent, winFlash * 0.6); ctx.fillRect(0, 0, VW, VH); }
+    if (winFlash > 0 && level) { ctx.fillStyle = `rgba(255,255,255,${winFlash * 0.55})`; ctx.fillRect(0, 0, VW, VH); }  // 着弾の白閃光
+    if (winning && winT >= 0.18 && level) {  // 出口から走る画面リング
+      const z = baseScale * cam.zoom, sx = VW / 2 + (winGX - cam.x) * z, sy = VH / 2 + (winGY - cam.y) * z;
+      const bt = winT - 0.18, a = clamp(1 - bt / 0.5, 0, 1);
+      if (a > 0) { ctx.strokeStyle = `rgba(255,255,255,${a * 0.6})`; ctx.lineWidth = 5 * a + 1.5; ctx.beginPath(); ctx.arc(sx, sy, bt * 1150, 0, 6.28); ctx.stroke(); }
+    }
     if (outMsg > 0) {  // 回数ぎれ失敗の告知（画面中央・やり直し）
       const a = clamp(outMsg / 1.4, 0, 1);
       ctx.fillStyle = `rgba(10,12,30,${0.5 * a})`; ctx.fillRect(0, VH / 2 - 54, VW, 108);
@@ -597,10 +610,19 @@
     ctx.fillStyle = rad; ctx.beginPath(); ctx.arc(g.x, g.y, 38, 0, 6.28); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(g.x, g.y, 9 + Math.sin(t * 3) * 1.5, 0, 6.28); ctx.fill();
   }
-  function drawWinRings() {  // 到達の衝撃波（出口から広がるリング）
+  function drawWinRings() {  // 到達の光ブルーム＋衝撃波リング（出口から広がる）
+    if (winT >= 0.18) {  // 白い光のブルーム（膨らんで消える）
+      const bt = winT - 0.18, ba = clamp(1 - bt / 0.45, 0, 1);
+      if (ba > 0) {
+        const br = 36 + bt * 560;
+        const gr = ctx.createRadialGradient(winGX, winGY, 0, winGX, winGY, br);
+        gr.addColorStop(0, `rgba(255,255,255,${0.55 * ba})`); gr.addColorStop(0.5, `rgba(255,255,255,${0.16 * ba})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(winGX, winGY, br, 0, 6.28); ctx.fill();
+      }
+    }
     for (const r of winRings) {
       ctx.globalAlpha = clamp(r.life, 0, 1) * 0.85;
-      ctx.strokeStyle = level.palette.accent; ctx.lineWidth = r.w;
+      ctx.strokeStyle = r.white ? '#ffffff' : level.palette.accent; ctx.lineWidth = r.w;
       ctx.beginPath(); ctx.arc(winGX, winGY, r.r, 0, 6.28); ctx.stroke();
     }
     ctx.globalAlpha = 1;
