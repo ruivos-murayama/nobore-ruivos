@@ -133,16 +133,34 @@
     ];
     const start = { x: clampC(centerX(floorTop - 60), 150, COL - 150), y: floorTop - 80 };
 
-    // 上の光る出口：広間の上部・中央の開けた空間に置く（周囲に余白＝直接アーチで入れる）。
-    const roomCx = clampC(centerX(top + 70), 170, COL - 170);
-    const goal = { x: roomCx, y: top + 64 };
+    // ---- 頂上の出口：天井のくぼみ（チュート）に収めた“スキルショット”ゲート ----
+    //  横からのかすめ取りを「リップ」で塞ぎ、中央の開口（ゲート）から下→上へ射し込む必要がある。
+    //  ＝「光に触れただけクリア」を解消し、狙って決める達成感に。開口は広め（詰みではなく“狙い”）。
+    //  形は下向きに口を開けた凹ポリゴン（∩にスリット）。出口はくぼみの奥にぶら下げる。
+    const roomCx = clampC(centerX(top + 70), 175, COL - 175);
+    const gateHalf = 60;                  // ゲート開口の半幅（120px＝キャラ径の約2.5倍／広め）
+    const outerHalf = gateHalf + 78;      // くぼみブロックの外半幅（リップの張り出し）
+    const cupRoofY = top - 52;            // ブロック上端（天井際）
+    const pocketRoofY = top - 2;          // くぼみ内側の天井（出口はこの下にぶら下がる）
+    const cupMouthY = top + 104;          // リップ下端＝ゲートの口
+    const cupGate = [
+      { x: roomCx - outerHalf, y: cupRoofY },
+      { x: roomCx + outerHalf, y: cupRoofY },
+      { x: roomCx + outerHalf, y: cupMouthY },
+      { x: roomCx + gateHalf,  y: cupMouthY },
+      { x: roomCx + gateHalf,  y: pocketRoofY },
+      { x: roomCx - gateHalf,  y: pocketRoofY },
+      { x: roomCx - gateHalf,  y: cupMouthY },
+      { x: roomCx - outerHalf, y: cupMouthY },
+    ];
+    const goal = { x: roomCx, y: top + 20 };   // くぼみの奥（射し込んで届く位置）
 
-    // 最終足場：出口の下・片側に置いた平らな台（中央を塞がない）。
-    //  「広間に入る→足場でひと呼吸→ねらって最後の一発で出口へ」の攻略ルートを用意（任意）。
+    // 最終足場：ゲートの下・片側に置いた踏み台（中央は塞がない）。
+    //  「広間に入る→足場で狙いを定める→上向き45°で射し込む」直接ルート用。
     const ledgeSide = (Math.round(roomCx) % 2 === 0) ? -1 : 1;   // 形に応じて左右を振る
-    const ledgeCx = clampC(roomCx + ledgeSide * 104, 110, COL - 110);
-    const ledgeY = top + 182;
-    const lw = 60, lh = 22;
+    const ledgeCx = clampC(roomCx + ledgeSide * 96, 110, COL - 110);
+    const ledgeY = top + 248;
+    const lw = 58, lh = 20;
     const topLedge = [
       { x: ledgeCx - lw,        y: ledgeY - lh * 0.4 },
       { x: ledgeCx - lw * 0.55, y: ledgeY - lh },
@@ -152,7 +170,7 @@
       { x: ledgeCx - lw * 0.85, y: ledgeY + lh },
     ];
 
-    const walls = [leftWall, rightWall, floor, topLedge];
+    const walls = [leftWall, rightWall, floor, topLedge, cupGate];
 
     // 有機トゲ（壁から内側へ）：危険
     const hazards = [];
@@ -187,6 +205,10 @@
         bouncy.push({ x: clampC(centerX(yy) + off, 120, COL - 120), y: yy, r: 30 });
       }
     }
+
+    // 頂上のバンパー：広間に1つ置き、跳ね返してゲートへ回り込む“バンクショット”ルートを作る。
+    //  踏み台の反対側・ゲートの下方に配置（中央の直接射し込みは塞がない）。
+    bouncy.push({ x: clampC(roomCx - ledgeSide * 96, 100, COL - 100), y: top + 176, r: 28, summit: true });
 
     // 上昇気流（ブースト帯）：入ると一気に加速する縦の流れ
     const boosts = [];

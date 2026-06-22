@@ -20,7 +20,7 @@ const DESIGN = {
     bounceRestitution: 0.72,
     radius: 24,
     launchIgnoreSteps: 7,   // 射出直後に壁判定を無視するステップ数
-    goalRadius: 40,         // 出口の判定半径
+    goalRadius: 30,         // 出口の判定半径（くぼみゲートに射し込む“狙い”の手応え用に絞り気味）
   },
 
   // ---- 貼り付き面からの発射制約 ----

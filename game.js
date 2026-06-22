@@ -49,7 +49,7 @@
     { name: '月夜の堀',   sub: '見張りを避けて登る', maxLaunch: 18, gen: { worldH: 1800, seed: 11, gapBase: 142, gapVar: 40, meander: 85, yStep: 74, nubCount: 6, hazardCount: 0, dangoCount: 5, bouncyCount: 0, sentryCount: 1, cloakCount: 0 } }, // 最短12
     { name: '影の廻廊',   sub: 'バンパーで跳ねる',   maxLaunch: 17, gen: { worldH: 2050, seed: 23, gapBase: 134, gapVar: 44, meander: 95, yStep: 72, nubCount: 7, hazardCount: 1, dangoCount: 5, bouncyCount: 3, sentryCount: 1, cloakCount: 1 } }, // 最短11
     { name: '隠れ里',     sub: '隠れ蓑で忍ぶ',       maxLaunch: 22, gen: { worldH: 2300, seed: 37, gapBase: 126, gapVar: 48, meander: 105, yStep: 70, nubCount: 8, hazardCount: 2, dangoCount: 6, bouncyCount: 1, sentryCount: 3, cloakCount: 2 } }, // 最短14
-    { name: '紅楓の砦',   sub: '組み合わせる',       maxLaunch: 23, gen: { worldH: 2550, seed: 51, gapBase: 132, gapVar: 46, meander: 108, yStep: 70, nubCount: 8, hazardCount: 3, dangoCount: 6, bouncyCount: 3, sentryCount: 2, cloakCount: 1 } }, // 最短16
+    { name: '紅楓の砦',   sub: '組み合わせる',       maxLaunch: 23, gen: { worldH: 2550, seed: 51, gapBase: 132, gapVar: 46, meander: 108, yStep: 70, nubCount: 8, hazardCount: 3, dangoCount: 6, bouncyCount: 3, sentryCount: 2, cloakCount: 1 } }, // 最短17
     { name: '天守の頂',   sub: '総合・見張り乱立',   maxLaunch: 27, gen: { worldH: 2900, seed: 67, gapBase: 130, gapVar: 48, meander: 110, yStep: 68, nubCount: 10, hazardCount: 4, dangoCount: 7, bouncyCount: 5, sentryCount: 3, cloakCount: 2 } }, // 最短19
   ];
 
@@ -63,6 +63,7 @@
   let particles = [], spores = [], trail = 0;
   let alive = true, deathT = 0, tries = 0;
   let launches = 0, outMsg = 0;                 // 飛ばし回数：のこり / 「もう とべない…」演出タイマー
+  let winning = false, winT = 0, winFlash = 0, winSpark = 0, winRings = [], winGX = 0, winGY = 0;  // 到達演出
   let combo = 0, texts = [], boostT = 0, bumpChain = 0, freeze = 0, popFlash = 0;
   let alert = 0, simTime = 0, alarmPing = 0;   // ステルス：発見メーター / 首振りの時刻 / 警告音タイマー
   let cloakT = 0;                              // 隠れ蓑：残り透明時間
@@ -109,6 +110,7 @@
     eyes.wide = 0; aim.active = false; alive = true; timeScale = 1; timeScaleTarget = 1; combo = 0; bumpChain = 0; freeze = 0; popFlash = 0;
     alert = 0; alarmPing = 0; cloakT = 0;   // simTime は連続させる（首振りは止めない）
     launches = level ? level.maxLaunch : 0; outMsg = 0;   // 飛ばし回数は毎リスポーン満タンに戻す
+    winning = false; winT = 0; winFlash = 0; winRings = [];   // 到達演出のリセット
     if (level && level.cloaks) for (const c of level.cloaks) c.used = false;
     cam.y = clampCamY(blob.y); cam.vy.v = 0; cam.zoom = 1;
   }
@@ -144,7 +146,50 @@
     return true;
   }
 
+  // ---- 到達演出（吸い込み→着弾の閃光→余韻→クリア画面）----
+  const WIN_DUR = 1.7;
+  function winStart() {
+    if (winning) return;
+    winning = true; winT = 0; winFlash = 0; winSpark = 0; winRings = [];
+    winGX = level.goal.x; winGY = level.goal.y;
+    aim.active = false; timeScaleTarget = 0.3; eyes.wide = 1; combo = 0; bumpChain = 0;
+    const hudEl = document.getElementById('hud'); if (hudEl) hudEl.classList.add('hidden');  // 演出中はHUDを隠す
+    beep(660, 0.14, 'sine', 0.16, 1240);   // 吸い込みの予兆
+  }
+  function fireWinBurst() {   // 着弾の“パッ”：閃光・震え・衝撃波・大量パーティクル・和音
+    winFlash = 1; addTrauma(0.95); flash = 0; popFlash = 0;
+    blob.x = winGX; blob.y = winGY; blob.px = winGX; blob.py = winGY;
+    impulseSquash(0, 1.8, 0.5);
+    for (let i = 0; i < 3; i++) winRings.push({ r: 6, life: 1, w: 6 - i * 1.5 });
+    for (let i = 0; i < 48; i++) { const a = rand(0, 6.28), s = rand(120, 540); particles.push({ x: winGX, y: winGY, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color: i % 3 === 0 ? '#ffffff' : i % 3 === 1 ? level.palette.accent : level.palette.blob, size: rand(3, 8) }); }
+    burstRing(winGX, winGY, '#ffffff', 24);
+    [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => beep(f, 0.5, 'triangle', 0.16, f * 1.5), i * 70));
+    setTimeout(() => beep(2100, 0.55, 'sine', 0.08, 2700), 200);
+    vibe([16, 36, 16, 70]);
+  }
+  function updateWin(dt) {
+    const prev = winT; winT += dt;
+    if (winT < 0.18) {  // フェーズA：出口へスッと吸い込まれる＋周囲から吸引粒子
+      const k = 1 - Math.pow(0.0008, dt / 0.06);
+      blob.x = lerp(blob.x, winGX, k); blob.y = lerp(blob.y, winGY, k); blob.px = blob.x; blob.py = blob.y;
+      if (Math.random() < 0.9) { const a = rand(0, 6.28), d = rand(46, 96); particles.push({ x: winGX + Math.cos(a) * d, y: winGY + Math.sin(a) * d, vx: -Math.cos(a) * 260, vy: -Math.sin(a) * 260, life: 1, color: level.palette.accent, size: rand(2, 4) }); }
+    }
+    if (prev < 0.18 && winT >= 0.18) fireWinBurst();   // 着弾（1回）
+    if (winT >= 0.18) {  // フェーズB：余韻（きらめき上昇）
+      timeScaleTarget = 1; winSpark += dt;
+      const rate = winT < 1.0 ? 0.025 : 0.05;
+      while (winSpark >= rate) { winSpark -= rate; particles.push({ x: winGX + rand(-72, 72), y: winGY + rand(-12, 24), vx: rand(-26, 26), vy: rand(-270, -150), life: 1, color: Math.random() < 0.5 ? '#ffffff' : level.palette.accent, size: rand(2, 5) }); }
+    }
+    blob.stuck = true; blob.nx = 0; blob.ny = -1; blob.vx = 0; blob.vy = 0;   // 出口で勝ち姿勢（idleバウンド）
+    updateSquash(dt); ageParticles(dt);
+    for (const r of winRings) { r.r += 440 * dt; r.life -= dt / 0.7; }
+    winRings = winRings.filter(r => r.life > 0);
+    if (winFlash > 0) winFlash = Math.max(0, winFlash - dt / 0.45);
+    if (winT >= WIN_DUR) onClear();
+  }
+
   function onClear() {
+    winning = false;
     sfx.clear(); burstRing(level.goal.x, level.goal.y, level.palette.accent, 34);
     gameState = 'clear';
     const got = dangoGot(), tot = level.dango.length;
@@ -219,7 +264,7 @@
 
       for (const hz of level.hazards) if (CAVE.circlePoly(blob.x, blob.y, R, hz)) { die(); return; }
       if (blob.y > level.worldH + 250) { die(); return; }
-      if (len(blob.x - level.goal.x, blob.y - level.goal.y) < R + P.goalRadius) { onClear(); return; }
+      if (len(blob.x - level.goal.x, blob.y - level.goal.y) < R + P.goalRadius) { winStart(); return; }
 
       for (const b of level.bouncy) {
         const dx = blob.x - b.x, dy = blob.y - b.y, rr = R + b.r;
@@ -341,7 +386,7 @@
 
   // ---- 入力（同フレーム発火）----
   function ptr(e) { const t = e.touches ? e.touches[0] : e; return { x: t.clientX, y: t.clientY }; }
-  function onDown(e) { if (gameState !== 'play' || !alive) return; e.preventDefault(); if (!blob.stuck) return; const p = ptr(e); aim.active = true; aim.sx = p.x; aim.sy = p.y; aim.cx = p.x; aim.cy = p.y; timeScaleTarget = D.slowmo.chargeScale; }
+  function onDown(e) { if (gameState !== 'play' || !alive || winning) return; e.preventDefault(); if (!blob.stuck) return; const p = ptr(e); aim.active = true; aim.sx = p.x; aim.sy = p.y; aim.cx = p.x; aim.cy = p.y; timeScaleTarget = D.slowmo.chargeScale; }
   function onMove(e) { if (!aim.active) return; e.preventDefault(); const p = ptr(e); aim.cx = p.x; aim.cy = p.y; }
   function onUp(e) {
     if (!aim.active) return; e.preventDefault(); aim.active = false; timeScaleTarget = 1;
@@ -387,6 +432,7 @@
     drawSentryCones(); drawCave(); drawBouncy(); drawHazards(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes();
     let predicted = null;
     if (gameState === 'play' && aim.active) { const a = aimVel(); const tr = simTrajectory(a.vx, a.vy); predicted = tr.land; drawTrajectory(tr, a.charge); }
+    if (winning) drawWinRings();
     drawParticles(); drawTexts();
     if (alive) drawBlob(alpha, predicted);
     ctx.restore();
@@ -395,6 +441,18 @@
     drawAlert();
     if (flash > 0) { ctx.fillStyle = hexA(D.danger, flash * 0.5); ctx.fillRect(0, 0, VW, VH); }
     if (popFlash > 0 && level) { ctx.fillStyle = hexA(level.palette.accent, popFlash * 0.35); ctx.fillRect(0, 0, VW, VH); }
+    if (winFlash > 0 && level) { ctx.fillStyle = hexA(level.palette.accent, winFlash * 0.6); ctx.fillRect(0, 0, VW, VH); }
+    if (winning && winT >= 0.18 && level) {  // 「クリア！」ぼよんと出る
+      const back = (t) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+      const tt = clamp((winT - 0.18) / 0.42, 0, 1), sc = back(tt), a = clamp(tt * 2.2, 0, 1);
+      ctx.save(); ctx.textAlign = 'center'; ctx.globalAlpha = a;
+      ctx.translate(VW / 2, VH * 0.34); ctx.scale(sc, sc);
+      ctx.font = 'bold 56px "Noto Sans JP", sans-serif';
+      ctx.lineWidth = 8; ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.strokeText('クリア！', 0, 0);
+      ctx.fillStyle = level.palette.accent; ctx.fillText('クリア！', 0, 0);
+      ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.strokeText('クリア！', 0, 0);
+      ctx.globalAlpha = 1; ctx.restore(); ctx.textAlign = 'left';
+    }
     if (outMsg > 0) {  // 回数ぎれ失敗の告知（画面中央・やり直し）
       const a = clamp(outMsg / 1.4, 0, 1);
       ctx.fillStyle = `rgba(10,12,30,${0.5 * a})`; ctx.fillRect(0, VH / 2 - 54, VW, 108);
@@ -512,6 +570,14 @@
     ctx.fillStyle = rad; ctx.beginPath(); ctx.arc(g.x, g.y, 38, 0, 6.28); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(g.x, g.y, 9 + Math.sin(t * 3) * 1.5, 0, 6.28); ctx.fill();
   }
+  function drawWinRings() {  // 到達の衝撃波（出口から広がるリング）
+    for (const r of winRings) {
+      ctx.globalAlpha = clamp(r.life, 0, 1) * 0.85;
+      ctx.strokeStyle = level.palette.accent; ctx.lineWidth = r.w;
+      ctx.beginPath(); ctx.arc(winGX, winGY, r.r, 0, 6.28); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
   function drawTrajectory(tr, charge) {
     const hue = lerp(D.trajectory.coldHue, D.trajectory.warmHue, charge);
     for (let i = 0; i < tr.beads.length; i++) { const a = 1 - i / tr.beads.length; ctx.globalAlpha = 0.25 + a * 0.65; ctx.fillStyle = `hsl(${hue},90%,65%)`; ctx.beginPath(); ctx.arc(tr.beads[i].x, tr.beads[i].y, lerp(5, 2, i / tr.beads.length), 0, 6.28); ctx.fill(); }
@@ -599,7 +665,8 @@
     if (outMsg > 0) outMsg = Math.max(0, outMsg - dt);
     if (gameState === 'play' && !alive) { deathT -= dt; if (deathT <= 0) spawn(); }
 
-    if (gameState === 'play') { acc += dt * timeScale; let guard = 0; while (acc >= h && guard++ < 8) { if (freeze > 0) { freeze--; acc -= h; continue; } stepFixed(h); acc -= h; } }
+    if (gameState === 'play' && winning) { updateWin(dt); }
+    else if (gameState === 'play') { acc += dt * timeScale; let guard = 0; while (acc >= h && guard++ < 8) { if (freeze > 0) { freeze--; acc -= h; continue; } stepFixed(h); acc -= h; } }
 
     let predicted = null;
     if (gameState === 'play' && aim.active) predicted = simTrajectory(...(() => { const a = aimVel(); return [a.vx, a.vy]; })()).land;
