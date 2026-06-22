@@ -149,7 +149,7 @@
   }
 
   // ---- 到達演出（吸い込み→着弾の閃光→余韻→クリア画面）----
-  const WIN_DUR = 1.7;
+  const WIN_DUR = 1.15;   // 吸い込み→着弾の閃光→短い余韻 → STAGE CLEAR 画面（テキスト演出は無し）
   function winStart() {
     if (winning) return;
     winning = true; winT = 0; winFlash = 0; winSpark = 0; winRings = [];
@@ -465,17 +465,6 @@
     if (flash > 0) { ctx.fillStyle = hexA(D.danger, flash * 0.5); ctx.fillRect(0, 0, VW, VH); }
     if (popFlash > 0 && level) { ctx.fillStyle = hexA(level.palette.accent, popFlash * 0.35); ctx.fillRect(0, 0, VW, VH); }
     if (winFlash > 0 && level) { ctx.fillStyle = hexA(level.palette.accent, winFlash * 0.6); ctx.fillRect(0, 0, VW, VH); }
-    if (winning && winT >= 0.18 && level) {  // 「クリア！」ぼよんと出る
-      const back = (t) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
-      const tt = clamp((winT - 0.18) / 0.42, 0, 1), sc = back(tt), a = clamp(tt * 2.2, 0, 1);
-      ctx.save(); ctx.textAlign = 'center'; ctx.globalAlpha = a;
-      ctx.translate(VW / 2, VH * 0.34); ctx.scale(sc, sc);
-      ctx.font = 'bold 56px "Noto Sans JP", sans-serif';
-      ctx.lineWidth = 8; ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.strokeText('クリア！', 0, 0);
-      ctx.fillStyle = level.palette.accent; ctx.fillText('クリア！', 0, 0);
-      ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.strokeText('クリア！', 0, 0);
-      ctx.globalAlpha = 1; ctx.restore(); ctx.textAlign = 'left';
-    }
     if (outMsg > 0) {  // 回数ぎれ失敗の告知（画面中央・やり直し）
       const a = clamp(outMsg / 1.4, 0, 1);
       ctx.fillStyle = `rgba(10,12,30,${0.5 * a})`; ctx.fillRect(0, VH / 2 - 54, VW, 108);
