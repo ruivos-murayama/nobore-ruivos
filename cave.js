@@ -101,6 +101,21 @@
       if (pts[bi + 1]) pts[bi + 1].x += sign * depth * 0.5;
     }
 
+    // 頂上チャンバー：コリドー上端を左右へ大きく開いて「登りきった先の広間」を作る。
+    //  ゴール前に余白を確保（＝狭くて入れないストレスを解消）。外へ膨らませるだけなので登路は途切れない。
+    //  紡錘形（中ほどが最も広い）。t=0:上端 → t=1:広間の底。nubで内側に寄ってもmin/maxで必ず開く。
+    const chDepth = p.chamberDepth || 300;   // 広間の縦の広がり（top から下へ）
+    const chWiden = p.chamberWiden || 130;   // 左右をどれだけ外へ開くか（広さ）
+    for (let k = 0; k < leftPts.length; k++) {
+      const t = (leftPts[k].y - top) / chDepth;
+      if (t < 0 || t > 1) continue;
+      const open = Math.sin(t * Math.PI) * chWiden;
+      leftPts[k].x  = Math.min(leftPts[k].x,  centerX(leftPts[k].y) - halfGap(leftPts[k].y) - open);
+      rightPts[k].x = Math.max(rightPts[k].x, centerX(rightPts[k].y) + halfGap(rightPts[k].y) + open);
+      leftPts[k].x  = clampC(leftPts[k].x, 40, COL / 2 - 50);
+      rightPts[k].x = clampC(rightPts[k].x, COL / 2 + 50, COL - 40);
+    }
+
     // 壁ポリゴン（左：x=0〜内側エッジ / 右：内側エッジ〜x=COL）
     const leftWall = [{ x: -20, y: top - 60 }];
     for (const pt of leftPts) leftWall.push({ x: pt.x, y: pt.y });
@@ -118,13 +133,24 @@
     ];
     const start = { x: clampC(centerX(floorTop - 60), 150, COL - 150), y: floorTop - 80 };
 
-    // 上の光る出口（足場＝丸い膨らみ＋その上にゴール）
-    const ledgeY = top + 80;
-    const ledgeX = clampC(centerX(ledgeY), 150, COL - 150);
-    const lr = 52;
-    const topLedge = [];
-    for (let a = 0; a < 12; a++) { const ang = (a / 12) * Math.PI * 2; topLedge.push({ x: ledgeX + Math.cos(ang) * lr, y: ledgeY + Math.sin(ang) * (lr * 0.7) }); }
-    const goal = { x: ledgeX, y: ledgeY - lr * 0.7 - 18 };
+    // 上の光る出口：広間の上部・中央の開けた空間に置く（周囲に余白＝直接アーチで入れる）。
+    const roomCx = clampC(centerX(top + 70), 170, COL - 170);
+    const goal = { x: roomCx, y: top + 64 };
+
+    // 最終足場：出口の下・片側に置いた平らな台（中央を塞がない）。
+    //  「広間に入る→足場でひと呼吸→ねらって最後の一発で出口へ」の攻略ルートを用意（任意）。
+    const ledgeSide = (Math.round(roomCx) % 2 === 0) ? -1 : 1;   // 形に応じて左右を振る
+    const ledgeCx = clampC(roomCx + ledgeSide * 104, 110, COL - 110);
+    const ledgeY = top + 182;
+    const lw = 60, lh = 22;
+    const topLedge = [
+      { x: ledgeCx - lw,        y: ledgeY - lh * 0.4 },
+      { x: ledgeCx - lw * 0.55, y: ledgeY - lh },
+      { x: ledgeCx + lw * 0.55, y: ledgeY - lh },
+      { x: ledgeCx + lw,        y: ledgeY - lh * 0.4 },
+      { x: ledgeCx + lw * 0.85, y: ledgeY + lh },
+      { x: ledgeCx - lw * 0.85, y: ledgeY + lh },
+    ];
 
     const walls = [leftWall, rightWall, floor, topLedge];
 

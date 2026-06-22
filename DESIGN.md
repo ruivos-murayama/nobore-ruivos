@@ -66,8 +66,10 @@
 **縛り：飛ばし回数（↗）** — 1ステージで弾ける回数に上限（`LEVELS[].maxLaunch`）。使い切って出口に届かなければ「もう とべない…」で**やり直し**（致死とは別演出。挑戦+1）。**💧雫を拾うと回数が回復**（`rules.launchPerDango`）＝集めるほど長く飛べるリスク報酬で、難易度の調整弁になる。回数は**毎リスポーンで満タンに復帰**（死＝回数の枯渇で詰まない）。上限は各ステージとも**最短手数＋人間のミス分**に設定（最短手数は `/tmp/minlaunch.js` のBFSで計測。締める→`maxLaunch`を下げる）。残りが `rules.lowWarnAt` 以下でHUDが赤く点滅。
 
 ## cave.js（地形）
-各ステージ `gen`：`worldH` `seed` `gapBase/gapVar` `meander` `yStep` `nubCount` `hazardCount` `dangoCount` `bouncyCount`(バンパー) `boostCount`(気流)。
-**左右に連続した壁があるので壁づたいに必ず上れる**（詰み防止）。下に床、上に光る出口＋足場を自動配置。
+各ステージ `gen`：`worldH` `seed` `gapBase/gapVar` `meander` `yStep` `nubCount` `hazardCount` `dangoCount` `bouncyCount`(バンパー) `boostCount`(気流) `chamberDepth/chamberWiden`(頂上の広間)。
+**左右に連続した壁があるので壁づたいに必ず上れる**（詰み防止）。下に床、上に光る出口を自動配置。
+
+**頂上チャンバー（ゴール周りの広間）** — コリドー上端を左右へ大きく開いて「登りきった先の広間」を作り、その上部・中央の開けた空間に出口を置く（＝狭くて入れないストレスを解消／攻略性のある最終局面）。中央は塞がず、片側に着地用の足場を1つだけ配置＝「広間に入る→足場でひと呼吸→ねらって最後の一発で出口へ」が読める。広さは `gen.chamberWiden`（左右の開き／既定130）、縦の範囲は `gen.chamberDepth`（topからの深さ／既定300）。外へ膨らませるだけなので登路は途切れない。出口の当たり判定は `physics.goalRadius`（＋キャラ半径）で実質広め。
 
 ## セルフチェック
 ```

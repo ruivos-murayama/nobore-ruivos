@@ -46,11 +46,11 @@
   //  括弧内は BFSソルバ(/tmp/minlaunch.js)が出した“理論最小”回数＝最短ルートの手数。
   //  上限はそこへ人間のミス分を上乗せした値。締めたい→maxLaunchを下げる／緩めたい→上げる。
   const LEVELS = [
-    { name: '月夜の堀',   sub: '見張りを避けて登る', maxLaunch: 18, gen: { worldH: 1800, seed: 11, gapBase: 142, gapVar: 40, meander: 85, yStep: 74, nubCount: 6, hazardCount: 0, dangoCount: 5, bouncyCount: 0, sentryCount: 1, cloakCount: 0 } }, // 最短13
-    { name: '影の廻廊',   sub: 'バンパーで跳ねる',   maxLaunch: 17, gen: { worldH: 2050, seed: 23, gapBase: 134, gapVar: 44, meander: 95, yStep: 72, nubCount: 7, hazardCount: 1, dangoCount: 5, bouncyCount: 3, sentryCount: 1, cloakCount: 1 } }, // 最短12
-    { name: '隠れ里',     sub: '隠れ蓑で忍ぶ',       maxLaunch: 22, gen: { worldH: 2300, seed: 37, gapBase: 126, gapVar: 48, meander: 105, yStep: 70, nubCount: 8, hazardCount: 2, dangoCount: 6, bouncyCount: 1, sentryCount: 3, cloakCount: 2 } }, // 最短16
-    { name: '紅楓の砦',   sub: '組み合わせる',       maxLaunch: 23, gen: { worldH: 2550, seed: 51, gapBase: 132, gapVar: 46, meander: 108, yStep: 70, nubCount: 8, hazardCount: 3, dangoCount: 6, bouncyCount: 3, sentryCount: 2, cloakCount: 1 } }, // 最短17
-    { name: '天守の頂',   sub: '総合・見張り乱立',   maxLaunch: 27, gen: { worldH: 2900, seed: 67, gapBase: 130, gapVar: 48, meander: 110, yStep: 68, nubCount: 10, hazardCount: 4, dangoCount: 7, bouncyCount: 5, sentryCount: 3, cloakCount: 2 } }, // 最短20
+    { name: '月夜の堀',   sub: '見張りを避けて登る', maxLaunch: 18, gen: { worldH: 1800, seed: 11, gapBase: 142, gapVar: 40, meander: 85, yStep: 74, nubCount: 6, hazardCount: 0, dangoCount: 5, bouncyCount: 0, sentryCount: 1, cloakCount: 0 } }, // 最短12
+    { name: '影の廻廊',   sub: 'バンパーで跳ねる',   maxLaunch: 17, gen: { worldH: 2050, seed: 23, gapBase: 134, gapVar: 44, meander: 95, yStep: 72, nubCount: 7, hazardCount: 1, dangoCount: 5, bouncyCount: 3, sentryCount: 1, cloakCount: 1 } }, // 最短11
+    { name: '隠れ里',     sub: '隠れ蓑で忍ぶ',       maxLaunch: 22, gen: { worldH: 2300, seed: 37, gapBase: 126, gapVar: 48, meander: 105, yStep: 70, nubCount: 8, hazardCount: 2, dangoCount: 6, bouncyCount: 1, sentryCount: 3, cloakCount: 2 } }, // 最短14
+    { name: '紅楓の砦',   sub: '組み合わせる',       maxLaunch: 23, gen: { worldH: 2550, seed: 51, gapBase: 132, gapVar: 46, meander: 108, yStep: 70, nubCount: 8, hazardCount: 3, dangoCount: 6, bouncyCount: 3, sentryCount: 2, cloakCount: 1 } }, // 最短16
+    { name: '天守の頂',   sub: '総合・見張り乱立',   maxLaunch: 27, gen: { worldH: 2900, seed: 67, gapBase: 130, gapVar: 48, meander: 110, yStep: 68, nubCount: 10, hazardCount: 4, dangoCount: 7, bouncyCount: 5, sentryCount: 3, cloakCount: 2 } }, // 最短19
   ];
 
   // ---- 状態 ----
