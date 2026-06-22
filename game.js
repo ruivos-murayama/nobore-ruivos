@@ -48,6 +48,7 @@
     { n: 4, name: '月天楼' },
     { n: 5, name: '水攻め' },
     { n: 6, name: '岐路の大坑' },
+    { n: 7, name: '氷瀑' },
   ];
   // ---- ステージ（cave.js が形を生成。配色は design の stages・並びは一致）----
   //  code=「章-番」。maxLaunch＝飛ばし回数の上限（💧1個でRU.launchPerDango回 回復）。
@@ -64,6 +65,7 @@
     { code: '4-2', world: 4, name: '月天楼の極', sub: 'すべての試練',       maxLaunch: 28, gen: { worldH: 3100, seed: 107, gapBase: 122, gapVar: 52, meander: 116, yStep: 66, nubCount: 11, hazardCount: 5, dangoCount: 7, bouncyCount: 4, sentryCount: 3, cloakCount: 2, platCount: 2, slipCount: 3, gateHalf: 50, bumperMove: 110, gateGuard: 2, gateMover: 2 } }, // 最短24・最難
     { code: '5-1', world: 5, name: 'せまる水面', sub: 'せり上がる水から登りきれ', maxLaunch: 21, gen: { worldH: 2200, seed: 14, gapBase: 140, gapVar: 42, meander: 95, yStep: 72, nubCount: 6, hazardCount: 1, dangoCount: 6, bouncyCount: 1, sentryCount: 1, cloakCount: 0, gateHalf: 62, riseSpeed: 44 } }, // 最短14・水攻め（強制スクロール床）
     { code: '6-1', world: 6, name: '分かれ道',   sub: '道を選んで登りきれ',     maxLaunch: 60, gen: { worldH: 5600, seed: 8, gapBase: 165, gapVar: 40, meander: 120, yStep: 76, nubCount: 4, hazardCount: 2, dangoCount: 10, bouncyCount: 2, sentryCount: 1, cloakCount: 0, gateHalf: 64, forkCount: 6 } }, // 本道≈56手/近道≈32手（貪欲クライマー計測）・ルート分岐
+    { code: '7-1', world: 7, name: '大滑降',     sub: '氷壁を滑り降りろ',       maxLaunch: 40, gen: { worldH: 3600, seed: 5, gapBase: 168, gapVar: 34, meander: 78, yStep: 70, hazardCount: 7, dangoCount: 8, descent: true, slipSpeed: 520 } }, // 滑降（上→下）・優しめ／爽快
   ];
 
   // ---- 状態 ----
@@ -115,6 +117,8 @@
     level.dango = g.dango.map(d => ({ x: d.x, y: d.y, got: false }));
     level.start = g.start; level.goal = g.goal; level.worldH = g.worldH;
     level.rise = level.gen.riseSpeed || 0;   // 強制スクロールの床（水攻め）の上昇速度 px/s（simTime基準）
+    level.descent = !!g.descent;             // 滑降ステージ（上→下／左右の氷壁を高速で滑り落ちる）
+    level.slipSpeed = level.gen.slipSpeed || 0;   // 滑る壁の滑走速度の個別上書き（0＝rules.slipSpeed）
     level.palette = (D.stages[i] && D.stages[i].palette) || D.stages[0].palette;
     setSkin(level.palette);
     tries = 0; particles = []; texts = []; combo = 0; spawn(); initSpores(); updateHUD();
@@ -132,8 +136,15 @@
     if (level && level.cloaks) for (const c of level.cloaks) c.used = false;
     if (level && level.dango) for (const d of level.dango) d.got = false;        // 雫も毎リスポーンで復活
     if (level && level.sentries) for (const s of level.sentries) s.hot = false;  // 見張りの警戒色をリセット
+    if (level && level.descent) attachToSlip();   // 滑降：スタートで氷壁に貼り付かせ即・滑り出す
     cam.y = clampCamY(blob.y); cam.vy.v = 0; cam.zoom = 1;
     updateHUD();   // リスポーン直後にジャンプ回数表示も満タンへ戻す（死亡時の数字のまま残らないように）
+  }
+  function attachToSlip() {   // 最寄りの氷壁（slipWall）へスナップして滑走状態にする
+    for (let k = 0; k < level.slipWalls.length; k++) {
+      const c = CAVE.circlePoly(blob.x, blob.y, R, level.slipWalls[k]);
+      if (c) { blob.x += c.nx * c.pen; blob.y += c.ny * c.pen; blob.nx = c.nx; blob.ny = c.ny; blob.stuck = true; blob.slip = true; blob.vx = 0; blob.vy = 0; return; }
+    }
   }
   function die() {
     if (!alive) return;
@@ -308,6 +319,8 @@
     if (!alive) { updateSquash(h); ageParticles(h); return; }
     // 強制スクロールの床（水攻め）：下からせり上がり、触れたら即アウト（生存中のみ進む）
     if (level.rise) { floorY -= level.rise * h; if (blob.y + R > floorY) { drown(); return; } }
+    // 滑降：最下部のフィニッシュラインを越えたらクリア（貼り付き中／飛行中どちらでも）
+    if (level.descent && blob.y > level.goal.y) { winStart(); return; }
     // 動くバンパー：左右に往復（基準bxからmove幅で）
     for (const b of level.bouncy) if (b.move) b.x = b.bx + b.move * Math.sin(simTime * b.mspeed + b.mphase);
     // 動く致死スパイク：位置更新＋衝突（飛行中も貼り付き中も即ミス）
@@ -356,15 +369,16 @@
         for (let k = 0; k < level.slipWalls.length && !done; k++) { const c = CAVE.circlePoly(blob.x, blob.y, R, level.slipWalls[k]); if (c) { land(c); blob.plat = -1; blob.slip = true; done = true; } }
         for (let k = 0; k < level.walls.length && !done; k++) { const c = CAVE.circlePoly(blob.x, blob.y, R, level.walls[k]); if (c) { land(c); blob.plat = -1; blob.slip = false; done = true; } }
       }
-    } else if (blob.slip) {   // 氷の壁：貼り付くが、ゆっくり下へ滑り落ちる（板の下端で離脱→落下）
-      blob.y += RU.slipSpeed * h;
+    } else if (blob.slip) {   // 氷の壁：貼り付くが下へ滑り落ちる（滑降ステージは高速＝level.slipSpeedで上書き）
+      blob.y += (level.slipSpeed || RU.slipSpeed) * h;
       blob.x -= blob.nx * 2; blob.y -= blob.ny * 2;            // 壁へ少し押し当てて吸着を維持
       let c = null, onSlip = false;
       for (let k = 0; k < level.slipWalls.length; k++) { const cc = CAVE.circlePoly(blob.x, blob.y, R, level.slipWalls[k]); if (cc) { c = cc; onSlip = true; break; } }
       if (!c) for (let k = 0; k < level.walls.length; k++) { const cc = CAVE.circlePoly(blob.x, blob.y, R, level.walls[k]); if (cc) { c = cc; break; } }
       if (c) { blob.x += c.nx * c.pen; blob.y += c.ny * c.pen; blob.nx = c.nx; blob.ny = c.ny; blob.slip = onSlip; }
       else { blob.stuck = false; blob.slip = false; blob.vx = blob.nx * 40; blob.vy = 90; blob.ignoreT = P.launchIgnoreSteps; }   // 板の下端で離脱→落下
-      if (Math.random() < 0.3) particles.push({ x: blob.x - blob.nx * R, y: blob.y - blob.ny * R, vx: 0, vy: 70, life: 1, color: '#cfeaff', size: rand(2, 3.5) });   // 氷の粉
+      const spray = level.descent ? 3 : (Math.random() < 0.3 ? 1 : 0);   // 滑降は氷しぶき多め＝スピード感
+      for (let s = 0; s < spray; s++) particles.push({ x: blob.x - blob.nx * R + rand(-6, 6), y: blob.y - blob.ny * R, vx: blob.nx * rand(-40, 40), vy: level.descent ? rand(-120, -40) : 70, life: 1, color: Math.random() < 0.5 ? '#cfeaff' : '#ffffff', size: rand(2, 4) });   // 氷の粉（滑降は後方へ）
     }
     // 隠れ蓑の雫を拾う → 一定時間 透明化
     if (level.cloaks) for (const c of level.cloaks) if (!c.used && len(blob.x - c.x, blob.y - c.y) < R + D.cloak.radius) {
@@ -576,8 +590,26 @@
       ctx.fillStyle = hexA(level.palette.accent, 0.5); ctx.fillRect(pl.cx - 5, pl.cy - 2, 10, 4);   // 中央の留め金
     }
   }
+  function xAtY(pts, y) {  // 折れ線(y昇順)の指定yでのx（氷壁の内側エッジ補間）
+    if (y <= pts[0].y) return pts[0].x;
+    if (y >= pts[pts.length - 1].y) return pts[pts.length - 1].x;
+    for (let i = 1; i < pts.length; i++) if (pts[i].y >= y) { const a = pts[i - 1], b = pts[i], t = (y - a.y) / ((b.y - a.y) || 1); return a.x + (b.x - a.x) * t; }
+    return pts[pts.length - 1].x;
+  }
+  function drawIceWall(s) {  // 滑降：左右まるごとの氷壁（不透明な氷＋発光する内エッジ＋下へ流れる高速シェブロン）
+    const isLeft = s[0].x < COL / 2;
+    poly(s); ctx.fillStyle = shade(level.palette.wall, 1.0); ctx.fill();
+    const inner = s.slice(1, s.length - 1);
+    ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = level.palette.accent; ctx.globalAlpha = 0.92;
+    ctx.beginPath(); for (let i = 0; i < inner.length; i++) { const p = inner[i]; i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); } ctx.stroke();
+    ctx.globalAlpha = 0.4; ctx.lineWidth = 9; ctx.strokeStyle = 'rgba(200,238,255,0.5)'; ctx.stroke(); ctx.globalAlpha = 1;   // 内エッジの氷の艶
+    const ylo = inner[0].y, yhi = inner[inner.length - 1].y, t = (performance.now() / 240) % 42;
+    ctx.strokeStyle = 'rgba(238,251,255,0.5)'; ctx.lineWidth = 2.5;
+    for (let y = ylo + t; y < yhi; y += 42) { const x = xAtY(inner, y), dir = isLeft ? 1 : -1; ctx.beginPath(); ctx.moveTo(x + dir * 4, y - 10); ctx.lineTo(x + dir * 17, y); ctx.lineTo(x + dir * 4, y + 10); ctx.stroke(); }
+  }
   function drawSlipWalls() {  // 滑る壁（氷の板）：氷青の光沢＋下向きシェブロン（滑る合図）
     if (!level.slipWalls) return;
+    if (level.descent) { for (const s of level.slipWalls) drawIceWall(s); return; }   // 滑降は全面の氷壁
     for (const s of level.slipWalls) {
       poly(s); ctx.fillStyle = 'rgba(180,228,255,0.45)'; ctx.fill();
       ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(220,245,255,0.9)'; ctx.stroke();
@@ -707,6 +739,15 @@
   }
   function drawGoal() {
     const g = level.goal, t = performance.now() / 500;
+    if (level.descent) {  // 滑降：最下部のフィニッシュライン（横帯＋市松＋光）
+      const dash = 22, off = (performance.now() / 60) % (dash * 2);
+      ctx.save(); ctx.globalAlpha = 0.85; ctx.strokeStyle = level.palette.accent; ctx.lineWidth = 10; ctx.setLineDash([dash, dash]); ctx.lineDashOffset = -off;
+      ctx.beginPath(); ctx.moveTo(-40, g.y); ctx.lineTo(COL + 40, g.y); ctx.stroke(); ctx.setLineDash([]);
+      const gr = ctx.createLinearGradient(0, g.y - 60, 0, g.y); gr.addColorStop(0, hexA(level.palette.accent, 0)); gr.addColorStop(1, hexA(level.palette.accent, 0.32));
+      ctx.fillStyle = gr; ctx.fillRect(-40, g.y - 60, COL + 80, 60); ctx.restore();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = 'bold 20px "Noto Sans JP",sans-serif'; ctx.globalAlpha = 0.9; ctx.fillText('GOAL', g.x, g.y - 16); ctx.globalAlpha = 1; ctx.textAlign = 'left';
+      return;
+    }
     for (let i = 0; i < 3; i++) { const ph = (t + i / 3) % 1; ctx.globalAlpha = (1 - ph) * 0.4; ctx.strokeStyle = level.palette.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(g.x, g.y, 18 + ph * 42, 0, 6.28); ctx.stroke(); }
     ctx.globalAlpha = 1;
     const rad = ctx.createRadialGradient(g.x, g.y, 2, g.x, g.y, 38); rad.addColorStop(0, 'rgba(255,255,255,0.95)'); rad.addColorStop(0.5, hexA(level.palette.accent, 0.8)); rad.addColorStop(1, hexA(level.palette.accent, 0));
@@ -928,6 +969,7 @@
 
     if (level) {
       let camTY = blob.y + clamp(blob.vy * CAM.lookaheadK, -CAM.lookahead, CAM.lookahead);
+      if (level.descent && blob.slip) camTY = blob.y + CAM.lookahead * 0.7;   // 滑降中は下を先読み＝スピード感
       camTY = clampCamY(camTY);
       cam.y = smoothDamp(cam.y, camTY, cam.vy, CAM.smoothTime, dt);
       const sp = len(blob.vx, blob.vy);

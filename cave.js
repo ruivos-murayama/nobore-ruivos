@@ -69,8 +69,68 @@
     return { nx: (cx - bx) / od, ny: (cy - by) / od, pen: R - d };     // 法線はキャラ側を向く
   }
 
+  // --- 滑降ステージ生成（趣旨が逆：上から下へ。左右まるごと高速の氷壁を滑り落ちる）---
+  //  ゴールは最下部のフィニッシュライン。左右の壁＝滑る壁（slipWalls）。トゲは左右交互で中央は常に開く＝必ず避けられる（優しい）。
+  function buildDescent(p, COL) {
+    const rng = mulberry32(p.seed);
+    const R = 24;                                   // ブロブ半径（design.physics.radius と一致）
+    const H = p.worldH, yStep = p.yStep || 80;
+    const cx0 = COL / 2;
+    const A1 = p.meander != null ? p.meander : 70, F1 = 0.0015 + rng() * 0.0009, P1 = rng() * 6.28;
+    const A2 = A1 * 0.5, F2 = 0.0033 + rng() * 0.0018, P2 = rng() * 6.28;
+    const G0 = p.gapBase || 165, GA = p.gapVar || 35, F3 = 0.002 + rng() * 0.0012, P3 = rng() * 6.28;
+    const centerX = (y) => clampC(cx0 + A1 * Math.sin(y * F1 + P1) + A2 * Math.sin(y * F2 + P2), 150, COL - 150);
+    const halfGap = (y) => G0 + GA * Math.sin(y * F3 + P3);
+
+    const top = 90, bot = H - 70;
+    const leftPts = [], rightPts = [];
+    for (let y = top; y <= bot + 1; y += yStep) {
+      leftPts.push({ x: centerX(y) - halfGap(y), y });
+      rightPts.push({ x: centerX(y) + halfGap(y), y });
+    }
+    // 左右の氷壁（滑る壁）：外側を閉じた塊にする。先頭=外側上端 / 中間=内側エッジ(上→下) / 末尾=外側下端。
+    const leftWall = [{ x: -60, y: top - 60 }];
+    for (const pt of leftPts) leftWall.push({ x: pt.x, y: pt.y });
+    leftWall.push({ x: -60, y: bot + 80 });
+    const rightWall = [{ x: COL + 60, y: top - 60 }];
+    for (const pt of rightPts) rightWall.push({ x: pt.x, y: pt.y });
+    rightWall.push({ x: COL + 60, y: bot + 80 });
+    const slipWalls = [leftWall, rightWall];
+
+    // 天井（飛び出し防止）。床は置かない＝下はフィニッシュライン。
+    const walls = [[{ x: -60, y: top - 70 }, { x: COL + 60, y: top - 70 }, { x: COL + 60, y: top - 34 }, { x: -60, y: top - 34 }]];
+
+    // トゲ（障害物）：左右交互に壁から内側へ。等間隔＝リズムよく避ける。中央は必ず開く（優しい）。
+    const hazards = [];
+    const hazardCount = p.hazardCount || 0;
+    const span = bot - top - 620;
+    for (let i = 0; i < hazardCount; i++) {
+      const yy = top + 380 + (hazardCount > 1 ? (i / (hazardCount - 1)) * span : 0);
+      const onLeft = (i % 2 === 0);
+      const ex = onLeft ? centerX(yy) - halfGap(yy) : centerX(yy) + halfGap(yy);
+      const depth = (onLeft ? +1 : -1) * (48 + rng() * 20);
+      hazards.push([{ x: ex, y: yy - 30 }, { x: ex + depth, y: yy }, { x: ex, y: yy + 30 }]);
+    }
+
+    // 雫：中央付近をジグザグに（よいラインで拾える）
+    const dango = [];
+    const dangoCount = p.dangoCount || 0;
+    for (let i = 0; i < dangoCount; i++) {
+      const yy = top + ((i + 1) / (dangoCount + 1)) * (bot - top);
+      dango.push({ x: clampC(centerX(yy) + ((i % 2) ? 1 : -1) * 70, 130, COL - 130), y: yy });
+    }
+
+    // スタート：左の氷壁に貼り付かせる（spawn で attachToSlip → すぐ滑り出す）。ゴール：最下部のフィニッシュライン。
+    const sy = top + 70;
+    const start = { x: centerX(sy) - halfGap(sy) + (R - 3), y: sy };
+    const goal = { x: cx0, y: bot - 8 };
+
+    return { walls, hazards, bouncy: [], boosts: [], sentries: [], cloaks: [], movers: [], platforms: [], slipWalls, dango, start, goal, worldH: H, descent: true };
+  }
+
   // --- 洞窟生成 ---
   function buildCave(p, COL) {
+    if (p.descent) return buildDescent(p, COL);
     const rng = mulberry32(p.seed);
     const H = p.worldH, yStep = p.yStep || 80;
     const cx0 = COL / 2;
