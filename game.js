@@ -115,6 +115,7 @@
     if (level && level.dango) for (const d of level.dango) d.got = false;        // 雫も毎リスポーンで復活
     if (level && level.sentries) for (const s of level.sentries) s.hot = false;  // 見張りの警戒色をリセット
     cam.y = clampCamY(blob.y); cam.vy.v = 0; cam.zoom = 1;
+    updateHUD();   // リスポーン直後にジャンプ回数表示も満タンへ戻す（死亡時の数字のまま残らないように）
   }
   function die() {
     if (!alive) return;
