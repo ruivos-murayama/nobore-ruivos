@@ -40,22 +40,28 @@
     return target + (change + temp) * exp;
   }
 
-  // ---- ステージ（cave.js が形を生成。配色は design の stages）----
-  //  忍び込み：月夜の堀から天守の頂へ。難易度カーブ ①見張り入門 →②バンパー →③隠れ蓑 →④複合 →⑤総合（見張り乱立）
-  //  maxLaunch ＝ そのステージで使える「飛ばし回数」の上限（💧1個でRU.launchPerDango回 回復）。
-  //  括弧内は BFSソルバ(/tmp/minlaunch.js)が出した“理論最小”回数＝最短ルートの手数。
-  //  上限はそこへ人間のミス分を上乗せした値。締めたい→maxLaunchを下げる／緩めたい→上げる。
+  // ---- 章（ワールド）----  全体MAPの区切り。城を下から頂上へ登る。
+  const WORLDS = [
+    { n: 1, name: '月夜の外郭' },
+    { n: 2, name: '城内のからくり' },
+    { n: 3, name: '天守へ' },
+  ];
+  // ---- ステージ（cave.js が形を生成。配色は design の stages・並びは一致）----
+  //  code=「章-番」。maxLaunch＝飛ばし回数の上限（💧1個でRU.launchPerDango回 回復）。
+  //  括弧内は BFSソルバ(/tmp/minlaunch.js)の理論最小手数。上限はそこへミス分を上乗せ。
   const LEVELS = [
-    { name: '月夜の堀',   sub: '見張りを避けて登る', maxLaunch: 18, gen: { worldH: 1800, seed: 11, gapBase: 142, gapVar: 40, meander: 85, yStep: 74, nubCount: 6, hazardCount: 0, dangoCount: 5, bouncyCount: 0, sentryCount: 1, cloakCount: 0, gateHalf: 66 } }, // 最短12／頂上:広いゲート
-    { name: '影の廻廊',   sub: 'バンパーで跳ねる',   maxLaunch: 17, gen: { worldH: 2050, seed: 23, gapBase: 134, gapVar: 44, meander: 95, yStep: 72, nubCount: 7, hazardCount: 1, dangoCount: 5, bouncyCount: 3, sentryCount: 1, cloakCount: 1, gateHalf: 62, bumperMove: 70 } }, // 最短11／頂上:動くバンパー
-    { name: '隠れ里',     sub: '隠れ蓑で忍ぶ',       maxLaunch: 22, gen: { worldH: 2300, seed: 37, gapBase: 126, gapVar: 48, meander: 105, yStep: 70, nubCount: 8, hazardCount: 2, dangoCount: 6, bouncyCount: 1, sentryCount: 3, cloakCount: 2, gateHalf: 60, bumperMove: 60, gateGuard: 1 } }, // 最短14／頂上:ゲート番1
-    { name: '紅楓の砦',   sub: '組み合わせる',       maxLaunch: 23, gen: { worldH: 2550, seed: 51, gapBase: 132, gapVar: 46, meander: 108, yStep: 70, nubCount: 8, hazardCount: 3, dangoCount: 6, bouncyCount: 3, sentryCount: 2, cloakCount: 1, gateHalf: 57, bumperMove: 80, gateGuard: 1, gateMover: 1 } }, // 最短17／頂上:動くスパイク
-    { name: '天守の頂',   sub: '総合・見張り乱立',   maxLaunch: 27, gen: { worldH: 2900, seed: 67, gapBase: 130, gapVar: 48, meander: 110, yStep: 68, nubCount: 10, hazardCount: 4, dangoCount: 7, bouncyCount: 5, sentryCount: 3, cloakCount: 2, gateHalf: 53, bumperMove: 95, gateGuard: 2, gateMover: 1 } }, // 最短19／頂上:総力戦
+    { code: '1-1', world: 1, name: '月夜の堀',   sub: '見張りを避けて登る', maxLaunch: 18, gen: { worldH: 1800, seed: 11, gapBase: 142, gapVar: 40, meander: 85, yStep: 74, nubCount: 6, hazardCount: 0, dangoCount: 5, bouncyCount: 0, sentryCount: 1, cloakCount: 0, gateHalf: 66 } }, // 最短12
+    { code: '1-2', world: 1, name: '影の廻廊',   sub: 'バンパーで跳ねる',   maxLaunch: 17, gen: { worldH: 2050, seed: 23, gapBase: 134, gapVar: 44, meander: 95, yStep: 72, nubCount: 7, hazardCount: 1, dangoCount: 5, bouncyCount: 3, sentryCount: 1, cloakCount: 1, gateHalf: 62, bumperMove: 70 } }, // 最短11
+    { code: '1-3', world: 1, name: '隠れ里',     sub: '隠れ蓑で忍ぶ',       maxLaunch: 22, gen: { worldH: 2300, seed: 37, gapBase: 126, gapVar: 48, meander: 105, yStep: 70, nubCount: 8, hazardCount: 2, dangoCount: 6, bouncyCount: 1, sentryCount: 3, cloakCount: 2, gateHalf: 60, bumperMove: 60, gateGuard: 1 } }, // 最短14
+    { code: '2-1', world: 2, name: 'からくり堂', sub: '動く足場を乗りこなす', maxLaunch: 22, gen: { worldH: 2200, seed: 41, gapBase: 150, gapVar: 38, meander: 92, yStep: 72, nubCount: 4, hazardCount: 1, dangoCount: 6, bouncyCount: 1, sentryCount: 1, cloakCount: 0, platCount: 4, gateHalf: 60, bumperMove: 60 } }, // 動く台
+    { code: '2-2', world: 2, name: '氷蔵',       sub: '滑る氷壁を渡る',       maxLaunch: 24, gen: { worldH: 2300, seed: 47, gapBase: 140, gapVar: 42, meander: 98, yStep: 70, nubCount: 5, hazardCount: 1, dangoCount: 6, bouncyCount: 1, sentryCount: 1, cloakCount: 1, slipCount: 4, gateHalf: 58, bumperMove: 70, gateGuard: 1 } }, // 滑る壁
+    { code: '3-1', world: 3, name: '紅楓の砦',   sub: '組み合わせる',       maxLaunch: 23, gen: { worldH: 2550, seed: 51, gapBase: 132, gapVar: 46, meander: 108, yStep: 70, nubCount: 8, hazardCount: 3, dangoCount: 6, bouncyCount: 3, sentryCount: 2, cloakCount: 1, gateHalf: 57, bumperMove: 80, gateGuard: 1, gateMover: 1 } }, // 最短17
+    { code: '3-2', world: 3, name: '天守の頂',   sub: '総合・見張り乱立',   maxLaunch: 27, gen: { worldH: 2900, seed: 67, gapBase: 130, gapVar: 48, meander: 110, yStep: 68, nubCount: 10, hazardCount: 4, dangoCount: 7, bouncyCount: 5, sentryCount: 3, cloakCount: 2, gateHalf: 53, bumperMove: 95, gateGuard: 2, gateMover: 1 } }, // 最短19
   ];
 
   // ---- 状態 ----
   let gameState = 'title', levelIndex = 0, level = null, totalDango = 0, totalTries = 0;
-  const blob = { x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0, stuck: true, nx: 0, ny: -1, ignoreT: 0 };
+  const blob = { x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0, stuck: true, nx: 0, ny: -1, ignoreT: 0, plat: -1, slip: false };
   const def = { ang: 0, sx: 1, sy: 1, vsx: 0, vsy: 0, offx: 0, offy: 0 };
   const eyes = { x: 1, y: 0, blink: 0, blinkTimer: 2, wide: 0 };
   const cam = { x: COL / 2, y: 0, vy: { v: 0 }, zoom: 1, vz: { v: 0 } };
@@ -96,6 +102,7 @@
     levelIndex = i; level = LEVELS[i];
     const g = CAVE.buildCave(level.gen, COL);
     level.walls = g.walls; level.hazards = g.hazards; level.bouncy = g.bouncy; level.boosts = g.boosts; level.sentries = g.sentries; level.movers = g.movers || [];
+    level.platforms = g.platforms || []; level.slipWalls = g.slipWalls || [];
     level.cloaks = g.cloaks ? g.cloaks.map(c => ({ x: c.x, y: c.y, used: false })) : [];
     level.dango = g.dango.map(d => ({ x: d.x, y: d.y, got: false }));
     level.start = g.start; level.goal = g.goal; level.worldH = g.worldH;
@@ -105,7 +112,7 @@
   }
   function spawn() {
     blob.x = level.start.x; blob.y = level.start.y; blob.px = blob.x; blob.py = blob.y;
-    blob.vx = 0; blob.vy = 0; blob.stuck = false; blob.nx = 0; blob.ny = -1; blob.ignoreT = 0;
+    blob.vx = 0; blob.vy = 0; blob.stuck = false; blob.nx = 0; blob.ny = -1; blob.ignoreT = 0; blob.plat = -1; blob.slip = false;
     def.ang = 0; def.sx = 1; def.sy = 1; def.vsx = 0; def.vsy = 0; def.offx = 0; def.offy = 0;
     eyes.wide = 0; aim.active = false; alive = true; timeScale = 1; timeScaleTarget = 1; combo = 0; bumpChain = 0; freeze = 0; popFlash = 0;
     alert = 0; alarmPing = 0; cloakT = 0;   // simTime は連続させる（首振りは止めない）
@@ -205,7 +212,7 @@
     gameState = 'clear';
     const got = dangoGot(), tot = level.dango.length;
     totalDango += got;   // 累計はクリア時に加算（リスポーンでの再取得を二重計上しない）
-    document.getElementById('clear-kicker').textContent = 'STAGE ' + (levelIndex + 1);
+    document.getElementById('clear-kicker').textContent = level.code + '  ' + (WORLDS[level.world - 1] ? WORLDS[level.world - 1].name : '');
     document.getElementById('clear-sub').textContent = level.name;
     document.getElementById('clear-stats').innerHTML =
       pipsHTML(got, tot) +
@@ -251,6 +258,7 @@
     const [ux, uy] = clampToCone(dx / d, dy / d);
     return { vx: ux * speed, vy: uy * speed, speed, charge: pull / P.maxPull, pull };
   }
+  function platPoly(i) { const pl = level.platforms[i]; const out = []; for (const v of pl.pts) out.push({ x: v.x + pl.cx, y: v.y + pl.cy }); return out; }
   function simTrajectory(vx, vy) {
     const h = P.fixedStep, dmp = Math.pow(P.airDamping, h);
     let x = blob.x, y = blob.y, ign = P.launchIgnoreSteps;
@@ -265,7 +273,9 @@
       for (const b of level.bouncy) { const dx = x - b.x, dy = y - b.y, rr = R + b.r; if (dx * dx + dy * dy < rr * rr) { const d = len(dx, dy) || 1, nx = dx / d, ny = dy / d; x = b.x + nx * rr; y = b.y + ny * rr; const vn = vx * nx + vy * ny, e = GM.bumperRestitution; vx -= (1 + e) * vn * nx; vy -= (1 + e) * vn * ny; const o = len(vx, vy); if (o < GM.bumperMinOut) { const s = GM.bumperMinOut / (o || 1); vx *= s; vy *= s; } } }
       for (const hz of level.hazards) if (CAVE.circlePoly(x, y, R, hz)) { land = { x, y }; lethal = true; break; }
       if (land) break;
-      if (ign <= 0) for (let k = 0; k < level.walls.length; k++) if (CAVE.circlePoly(x, y, R, level.walls[k])) { land = { x, y }; break; }
+      if (ign <= 0) for (const sp of level.slipWalls) if (CAVE.circlePoly(x, y, R, sp)) { land = { x, y }; break; }
+      if (!land && ign <= 0) for (let i = 0; i < level.platforms.length; i++) if (CAVE.circlePoly(x, y, R, platPoly(i))) { land = { x, y }; break; }
+      if (!land && ign <= 0) for (let k = 0; k < level.walls.length; k++) if (CAVE.circlePoly(x, y, R, level.walls[k])) { land = { x, y }; break; }
       if (land || y > level.worldH + 200) break;
     }
     return { beads, land, lethal };
@@ -284,6 +294,9 @@
       m.cx = m.x0 + m.ax * m.amp * s; m.cy = m.y0 + m.ay * m.amp * s;
       if (len(blob.x - m.cx, blob.y - m.cy) < R + m.r) { die(); return; }
     }
+    // 動く台：位置更新＋（乗っていれば）一緒に運ぶ
+    for (const pl of level.platforms) { pl.pcx = pl.cx; pl.pcy = pl.cy; const s = Math.sin(simTime * pl.speed + pl.phase); pl.cx = pl.x0 + pl.ax * pl.amp * s; pl.cy = pl.y0 + pl.ay * pl.amp * s; }
+    if (blob.stuck && blob.plat >= 0 && level.platforms[blob.plat]) { const pl = level.platforms[blob.plat]; blob.x += pl.cx - pl.pcx; blob.y += pl.cy - pl.pcy; }
     if (!blob.stuck) {
       blob.vy += P.gravity * h;
       const dmp = Math.pow(P.airDamping, h); blob.vx *= dmp; blob.vy *= dmp;
@@ -314,7 +327,22 @@
           if (bumpChain >= 2) { texts.push({ x: blob.x, y: blob.y - 22, n: bumpChain, life: 1 }); popFlash = Math.min(0.5, bumpChain * 0.1); }
         }
       }
-      if (blob.ignoreT <= 0) for (let k = 0; k < level.walls.length; k++) { const c = CAVE.circlePoly(blob.x, blob.y, R, level.walls[k]); if (c) { land(c); break; } }
+      // 着地：動く台（乗る）→ 滑る壁（貼り付くが滑る）→ 通常壁
+      if (blob.ignoreT <= 0) {
+        let done = false;
+        for (let i = 0; i < level.platforms.length && !done; i++) { const c = CAVE.circlePoly(blob.x, blob.y, R, platPoly(i)); if (c) { land(c); blob.plat = i; blob.slip = false; done = true; } }
+        for (let k = 0; k < level.slipWalls.length && !done; k++) { const c = CAVE.circlePoly(blob.x, blob.y, R, level.slipWalls[k]); if (c) { land(c); blob.plat = -1; blob.slip = true; done = true; } }
+        for (let k = 0; k < level.walls.length && !done; k++) { const c = CAVE.circlePoly(blob.x, blob.y, R, level.walls[k]); if (c) { land(c); blob.plat = -1; blob.slip = false; done = true; } }
+      }
+    } else if (blob.slip) {   // 氷の壁：貼り付くが、ゆっくり下へ滑り落ちる（板の下端で離脱→落下）
+      blob.y += RU.slipSpeed * h;
+      blob.x -= blob.nx * 2; blob.y -= blob.ny * 2;            // 壁へ少し押し当てて吸着を維持
+      let c = null, onSlip = false;
+      for (let k = 0; k < level.slipWalls.length; k++) { const cc = CAVE.circlePoly(blob.x, blob.y, R, level.slipWalls[k]); if (cc) { c = cc; onSlip = true; break; } }
+      if (!c) for (let k = 0; k < level.walls.length; k++) { const cc = CAVE.circlePoly(blob.x, blob.y, R, level.walls[k]); if (cc) { c = cc; break; } }
+      if (c) { blob.x += c.nx * c.pen; blob.y += c.ny * c.pen; blob.nx = c.nx; blob.ny = c.ny; blob.slip = onSlip; }
+      else { blob.stuck = false; blob.slip = false; blob.vx = blob.nx * 40; blob.vy = 90; blob.ignoreT = P.launchIgnoreSteps; }   // 板の下端で離脱→落下
+      if (Math.random() < 0.3) particles.push({ x: blob.x - blob.nx * R, y: blob.y - blob.ny * R, vx: 0, vy: 70, life: 1, color: '#cfeaff', size: rand(2, 3.5) });   // 氷の粉
     }
     // 隠れ蓑の雫を拾う → 一定時間 透明化
     if (level.cloaks) for (const c of level.cloaks) if (!c.used && len(blob.x - c.x, blob.y - c.y) < R + D.cloak.radius) {
@@ -424,7 +452,7 @@
     if (!aim.active) return; e.preventDefault(); aim.active = false; timeScaleTarget = 1;
     const a = aimVel(); if (a.pull < 6) return;
     if (launches <= 0) return;   // 念のため（通常はのこり0で着地した瞬間に失敗判定が入る）
-    blob.stuck = false; blob.vx = a.vx; blob.vy = a.vy; blob.ignoreT = P.launchIgnoreSteps; bumpChain = 0;
+    blob.stuck = false; blob.plat = -1; blob.slip = false; blob.vx = a.vx; blob.vy = a.vy; blob.ignoreT = P.launchIgnoreSteps; bumpChain = 0;
     launches--; updateHUD();     // 1回の飛ばしで1消費
     impulseSquash(Math.atan2(a.vy, a.vx), SQ.launchAlong, SQ.launchPerp);
     launchParticles(a.vx, a.vy, a.charge); sfx.launch(a.charge); vibe(D.haptics.launch);
@@ -461,7 +489,7 @@
     ctx.globalAlpha = 1;
 
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, COL, level.worldH); ctx.clip();
-    drawSentryCones(); drawCave(); drawBouncy(); drawHazards(); drawMovers(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes();
+    drawSentryCones(); drawCave(); drawSlipWalls(); drawPlatforms(); drawBouncy(); drawHazards(); drawMovers(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes();
     let predicted = null;
     if (gameState === 'play' && aim.active) { const a = aimVel(); const tr = simTrajectory(a.vx, a.vy); predicted = tr.land; drawTrajectory(tr, a.charge); }
     if (winning) drawWinRings();
@@ -502,6 +530,28 @@
     }
   }
   function drawHazards() { for (const hz of level.hazards) { poly(hz); ctx.fillStyle = hexA(D.danger, 0.9); ctx.fill(); ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.strokeStyle = '#ffffff'; ctx.globalAlpha = 0.5; ctx.stroke(); ctx.globalAlpha = 1; } }
+  function drawPlatforms() {  // 動く台（からくり）：往復軌道＋木目調の台
+    if (!level.platforms) return;
+    for (const pl of level.platforms) {
+      ctx.strokeStyle = hexA(level.palette.accent, 0.22); ctx.lineWidth = 2.5; ctx.setLineDash([3, 7]);
+      ctx.beginPath(); ctx.moveTo(pl.x0 - pl.ax * pl.amp, pl.y0 - pl.ay * pl.amp); ctx.lineTo(pl.x0 + pl.ax * pl.amp, pl.y0 + pl.ay * pl.amp); ctx.stroke(); ctx.setLineDash([]);
+      const p = platPoly(level.platforms.indexOf(pl));
+      poly(p); ctx.fillStyle = shade(level.palette.wall, 1.5); ctx.fill();
+      ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = level.palette.accent; ctx.stroke();
+      ctx.fillStyle = hexA(level.palette.accent, 0.5); ctx.fillRect(pl.cx - 5, pl.cy - 2, 10, 4);   // 中央の留め金
+    }
+  }
+  function drawSlipWalls() {  // 滑る壁（氷の板）：氷青の光沢＋下向きシェブロン（滑る合図）
+    if (!level.slipWalls) return;
+    for (const s of level.slipWalls) {
+      poly(s); ctx.fillStyle = 'rgba(180,228,255,0.45)'; ctx.fill();
+      ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(220,245,255,0.9)'; ctx.stroke();
+      let ylo = 1e9, yhi = -1e9, xm = 0; for (const v of s) { ylo = Math.min(ylo, v.y); yhi = Math.max(yhi, v.y); xm += v.x; } xm /= s.length;
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2;
+      const t = (performance.now() / 600) % 1;
+      for (let y = ylo + (yhi - ylo) * t; y < yhi; y += 26) { ctx.beginPath(); ctx.moveTo(xm - 7, y - 4); ctx.lineTo(xm, y + 2); ctx.lineTo(xm + 7, y - 4); ctx.stroke(); }
+    }
+  }
   function drawMovers() {  // 動く致死スパイク（往復するトゲ玉）＋スライド軌道
     if (!level.movers) return;
     const t = performance.now() / 200;

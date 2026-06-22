@@ -65,6 +65,7 @@ const DESIGN = {
   rules: {
     launchPerDango: 1,   // ★ 💧雫を1つ拾うごとに回復する飛ばし回数（小さく＝シビア）
     lowWarnAt: 3,        // ★ のこりがこの数以下でHUDを赤く点滅（警告）
+    slipSpeed: 95,       // ★ 滑る壁：貼り付いても下へずり落ちる速さ px/s（大きい＝早く落ちる）
   },
 
   // ---- もちっと（2階バネ＝ease-out-back）----
@@ -98,12 +99,15 @@ const DESIGN = {
   // ---- ステージ配色（忍び込み：夜の藍・墨bg＋提灯/金 accent＋映える blob）----
   //  月夜の堀 → 影の廻廊 → 隠れ里 → 紅楓の砦 → 天守の頂 へ忍び上がる。
   //  bg=夜闇 / wall=石垣・板塀 / accent=灯り・出口・演出 / blob=忍ぶ生き物（発光して闇に映える）
+  //  ※並び＝game.js LEVELS と一致（章: 1 月夜の外郭 / 2 城内のからくり / 3 天守へ）
   stages: [
-    { palette: { bg: '#0a1230', wall: '#1b2750', accent: '#9fc4ff', blob: '#ff5a47' } }, // 1 月夜の堀（藍×月光×朱）
-    { palette: { bg: '#15101f', wall: '#2a2238', accent: '#ffb347', blob: '#54e0c4' } }, // 2 影の廻廊（墨紫×提灯×翡翠）
-    { palette: { bg: '#0b1f1a', wall: '#163129', accent: '#ffd24a', blob: '#ff6f91' } }, // 3 隠れ里（竹林×灯×紅）
-    { palette: { bg: '#1d0f13', wall: '#34181f', accent: '#ff7a4d', blob: '#54d6e0' } }, // 4 紅楓の砦（紅葉×橙×浅葱）
-    { palette: { bg: '#0a0a14', wall: '#1d1b2a', accent: '#ffcf5c', blob: '#ff5d7a' } }, // 5 天守の頂（墨×金×紅）
+    { palette: { bg: '#0a1230', wall: '#1b2750', accent: '#9fc4ff', blob: '#ff5a47' } }, // 1-1 月夜の堀（藍×月光×朱）
+    { palette: { bg: '#15101f', wall: '#2a2238', accent: '#ffb347', blob: '#54e0c4' } }, // 1-2 影の廻廊（墨紫×提灯×翡翠）
+    { palette: { bg: '#0b1f1a', wall: '#163129', accent: '#ffd24a', blob: '#ff6f91' } }, // 1-3 隠れ里（竹林×灯×紅）
+    { palette: { bg: '#15101a', wall: '#2b2233', accent: '#e8a23c', blob: '#56e0c4' } }, // 2-1 からくり堂（黄銅×翡翠）
+    { palette: { bg: '#0a1622', wall: '#18293c', accent: '#bfe9ff', blob: '#ff7a9e' } }, // 2-2 氷蔵（氷青×紅）
+    { palette: { bg: '#1d0f13', wall: '#34181f', accent: '#ff7a4d', blob: '#54d6e0' } }, // 3-1 紅楓の砦（紅葉×橙×浅葱）
+    { palette: { bg: '#0a0a14', wall: '#1d1b2a', accent: '#ffcf5c', blob: '#ff5d7a' } }, // 3-2 天守の頂（墨×金×紅）
   ],
 
   // 目・影など共通

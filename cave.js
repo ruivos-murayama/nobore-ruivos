@@ -275,7 +275,36 @@
       cloaks.push({ x: clampC(centerX(yy) + (rng() - 0.5) * 36, 120, COL - 120), y: yy });
     }
 
-    return { walls, hazards, bouncy, boosts, sentries, cloaks, movers, dango, start, goal, worldH: H };
+    // ---- 動く台（からくり）：乗ると一緒に運ばれる足場。横/縦で往復・前半から ----
+    const platforms = [];
+    const platCount = p.platCount || 0;
+    for (let i = 0; i < platCount; i++) {
+      const yy = top + 250 + ((i + 0.5) / Math.max(1, platCount)) * (bot - top - 540);
+      const horiz = (i % 2 === 0);
+      const hw = 52, hh = 12;
+      const ptsP = [{ x: -hw, y: -hh * 0.5 }, { x: -hw * 0.6, y: -hh }, { x: hw * 0.6, y: -hh }, { x: hw, y: -hh * 0.5 }, { x: hw * 0.72, y: hh }, { x: -hw * 0.72, y: hh }];
+      const cxp = clampC(centerX(yy), 130, COL - 130);
+      const amp = horiz ? clampC(halfGap(yy) - hw - 30, 18, 120) : 86;
+      platforms.push({ pts: ptsP, x0: cxp, y0: yy, cx: cxp, cy: yy, pcx: cxp, pcy: yy, ax: horiz ? 1 : 0, ay: horiz ? 0 : 1, amp, speed: 0.7 + rng() * 0.5, phase: rng() * 6.28 });
+    }
+
+    // ---- 滑る壁（氷の板）：貼り付くが“ゆっくり下に滑り落ちる”。左右交互・前半から（板の下端で離脱→落下）----
+    const slipWalls = [];
+    const slipCount = p.slipCount || 0;
+    for (let i = 0; i < slipCount; i++) {
+      const yc = top + 260 + ((i + 0.5) / Math.max(1, slipCount)) * (bot - top - 520);
+      const onLeft = (i % 2 === 0);
+      const pts = onLeft ? leftPts : rightPts;
+      const span = pts.filter(pt => pt.y >= yc - 80 && pt.y <= yc + 80);
+      if (span.length < 2) continue;
+      const proud = onLeft ? 12 : -12;
+      const panel = [];
+      for (const pt of span) panel.push({ x: pt.x, y: pt.y });
+      for (let k = span.length - 1; k >= 0; k--) panel.push({ x: span[k].x + proud, y: span[k].y });
+      slipWalls.push(panel);
+    }
+
+    return { walls, hazards, bouncy, boosts, sentries, cloaks, movers, platforms, slipWalls, dango, start, goal, worldH: H };
   }
 
   const CAVE = { buildCave, circlePoly, pointInPoly, mulberry32, segSeg, segPoly };
