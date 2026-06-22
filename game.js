@@ -70,6 +70,7 @@
 
   // ---- 状態 ----
   let gameState = 'title', levelIndex = 0, level = null, totalDango = 0, totalTries = 0;
+  let playlist = null;   // URL ?pack=new で「新ステージだけ」を連続プレイ（[index,...]／nullで通常MAP）
   const blob = { x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0, stuck: true, nx: 0, ny: -1, ignoreT: 0, plat: -1, slip: false };
   const def = { ang: 0, sx: 1, sy: 1, vsx: 0, vsy: 0, offx: 0, offy: 0 };
   const eyes = { x: 1, y: 0, blink: 0, blinkTimer: 2, wide: 0 };
@@ -927,8 +928,9 @@
     const j = document.getElementById('jumps');
     if (j) j.classList.toggle('low', launches <= RU.lowWarnAt);
   }
-  function startGame() { ac(); totalDango = 0; totalTries = 0; enterMap(); }   // タイトル→全体MAP
+  function startGame() { ac(); totalDango = 0; totalTries = 0; if (playlist && playlist.length) startLevel(playlist[0]); else enterMap(); }   // タイトル→（通常）全体MAP／（pack）新ステージへ直行
   function startLevel(i) { gameState = 'play'; loadLevel(i); show('play'); }    // MAP→ステージ開始
+  function showAllClear() { gameState = 'allclear'; document.getElementById('allclear-stats').innerHTML = '<div class="stats">' + `<div class="stat-row"><span class="k">あつめた しずく</span><span class="v">${totalDango}</span></div>` + `<div class="stat-row"><span class="k">そう ちょうせん</span><span class="v">${totalTries}</span></div>` + '</div>'; show('allclear'); }
   // タップでも確実に発火させる（スマホで click が合成されない/握りつぶされる対策）。
   //  指のブレ(>12px)はタップ扱いにしない＝スクロール誤爆を防ぐ。touchで発火したら直後の合成clickは無視（二重発火ガード）。
   function bindTap(id, fn) {
@@ -942,8 +944,13 @@
   bindTap('btn-start', startGame);
   bindTap('btn-replay', () => { gameState = 'play'; loadLevel(levelIndex); show('play'); });
   bindTap('btn-next', () => {
+    if (playlist) {   // 新ステージパック：次の新ステージへ（最後ならクリア画面）
+      const pos = playlist.indexOf(levelIndex);
+      if (pos >= 0 && pos + 1 < playlist.length) startLevel(playlist[pos + 1]); else showAllClear();
+      return;
+    }
     if (levelIndex + 1 < LEVELS.length) { enterMap(levelIndex + 1); }   // 全体MAPへ（次が解放された状態で表示）
-    else { gameState = 'allclear'; document.getElementById('allclear-stats').innerHTML = '<div class="stats">' + `<div class="stat-row"><span class="k">あつめた しずく</span><span class="v">${totalDango}</span></div>` + `<div class="stat-row"><span class="k">そう ちょうせん</span><span class="v">${totalTries}</span></div>` + '</div>'; show('allclear'); }
+    else showAllClear();
   });
   bindTap('btn-home', () => { gameState = 'title'; setSkin(D.stages[0].palette); show('title'); });
 
@@ -978,5 +985,13 @@
     render(clamp(acc / h, 0, 1));
     requestAnimationFrame(frame);
   }
+  // URL ?pack=new で「新しく追加した3面だけ」を連続プレイ（タイトル「あそぶ」→ 5-1→6-1→7-1）
+  try {
+    if (new URLSearchParams(location.search).get('pack') === 'new') {
+      playlist = LEVELS.map((l, i) => i).filter(i => ['5-1', '6-1', '7-1'].includes(LEVELS[i].code));
+      if (!playlist.length) playlist = null;
+      const lead = document.querySelector('#title .lead'); if (lead && playlist) lead.textContent = '新ステージ3面をあそぶ';
+    }
+  } catch (e) {}
   loadProgress(); initSpores(); requestAnimationFrame(frame);
 })();
