@@ -71,6 +71,7 @@
   // ---- 状態 ----
   let gameState = 'title', levelIndex = 0, level = null, totalDango = 0, totalTries = 0;
   let playlist = null;   // URL ?pack=new で「新ステージだけ」を連続プレイ（[index,...]／nullで通常MAP）
+  let freeRoam = false;  // URL ?unlock=all で全ステージ解放（MAPを自由に行き来。保存データは変えない＝表示/タップだけ開放）
   const blob = { x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0, stuck: true, nx: 0, ny: -1, ignoreT: 0, plat: -1, slip: false };
   const def = { ang: 0, sx: 1, sy: 1, vsx: 0, vsy: 0, offx: 0, offy: 0 };
   const eyes = { x: 1, y: 0, blink: 0, blinkTimer: 2, wide: 0 };
@@ -817,6 +818,7 @@
   let progress = { unlocked: 0, cleared: {} };
   function loadProgress() { try { const s = JSON.parse(localStorage.getItem('nobore_progress')); if (s && typeof s.unlocked === 'number') progress = { unlocked: clamp(s.unlocked | 0, 0, LEVELS.length - 1), cleared: s.cleared || {} }; } catch (e) {} }
   function saveProgress() { try { localStorage.setItem('nobore_progress', JSON.stringify(progress)); } catch (e) {} }
+  function isUnlocked(i) { return freeRoam || i <= progress.unlocked; }   // 全解放URLでは全ノードを開放（保存は変えない）
 
   const MAP_SP = 156, MAP_TOP = 168, MAP_BOT = 150;
   const mapContentH = () => MAP_TOP + (LEVELS.length - 1) * MAP_SP + MAP_BOT;
@@ -887,7 +889,7 @@
   }
   function drawMapNode(i, x, y) {
     const L = LEVELS[i], pal = D.stages[i].palette;
-    const unlocked = i <= progress.unlocked, cleared = !!progress.cleared[i], current = (i === progress.unlocked);
+    const unlocked = isUnlocked(i), cleared = !!progress.cleared[i], current = (i === progress.unlocked);
     if (unlocked) { ctx.save(); ctx.globalAlpha = cleared ? 0.45 : (0.35 + 0.28 * (Math.sin(performance.now() / 280) + 1) / 2); ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(x, y, 42, 0, 6.28); ctx.fill(); ctx.restore(); }
     const r = 27;
     ctx.lineWidth = 3.5; ctx.strokeStyle = unlocked ? pal.accent : 'rgba(255,255,255,0.2)';
@@ -909,7 +911,7 @@
   function mapTapAt(px, py) {
     for (let i = 0; i < LEVELS.length; i++) {
       const x = mapNodeX(i), y = mapNodeVY(i) - mapScroll;
-      if (Math.hypot(px - x, py - y) < 38) { if (i <= progress.unlocked) { ac(); startLevel(i); } else { beep(220, 0.12, 'square', 0.12, 160); } return; }
+      if (Math.hypot(px - x, py - y) < 38) { if (isUnlocked(i)) { ac(); startLevel(i); } else { beep(220, 0.12, 'square', 0.12, 160); } return; }
     }
   }
 
@@ -985,12 +987,17 @@
     render(clamp(acc / h, 0, 1));
     requestAnimationFrame(frame);
   }
-  // URL ?pack=new で「新しく追加した3面だけ」を連続プレイ（タイトル「あそぶ」→ 5-1→6-1→7-1）
+  // URLモード：?pack=new＝新3面だけ連続プレイ ／ ?unlock=all（=?pack=all）＝全ステージ解放でMAPを自由に行き来
   try {
-    if (new URLSearchParams(location.search).get('pack') === 'new') {
+    const q = new URLSearchParams(location.search);
+    const lead = document.querySelector('#title .lead');
+    if (q.get('pack') === 'new') {
       playlist = LEVELS.map((l, i) => i).filter(i => ['5-1', '6-1', '7-1'].includes(LEVELS[i].code));
       if (!playlist.length) playlist = null;
-      const lead = document.querySelector('#title .lead'); if (lead && playlist) lead.textContent = '新ステージ3面をあそぶ';
+      if (lead && playlist) lead.textContent = '新ステージ3面をあそぶ';
+    } else if (q.get('unlock') === 'all' || q.get('pack') === 'all') {
+      freeRoam = true;
+      if (lead) lead.textContent = '全ステージ自由に選ぶ';
     }
   } catch (e) {}
   loadProgress(); initSpores(); requestAnimationFrame(frame);
