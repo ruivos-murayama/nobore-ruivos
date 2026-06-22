@@ -65,6 +65,13 @@
 
 **縛り：飛ばし回数（↗）** — 1ステージで弾ける回数に上限（`LEVELS[].maxLaunch`）。使い切って出口に届かなければ「もう とべない…」で**やり直し**（致死とは別演出。挑戦+1）。**💧雫を拾うと回数が回復**（`rules.launchPerDango`）＝集めるほど長く飛べるリスク報酬で、難易度の調整弁になる。回数は**毎リスポーンで満タンに復帰**（死＝回数の枯渇で詰まない）。上限は各ステージとも**最短手数＋人間のミス分**に設定（最短手数は `/tmp/minlaunch.js` のBFSで計測。締める→`maxLaunch`を下げる）。残りが `rules.lowWarnAt` 以下でHUDが赤く点滅。
 
+## ステージ選択MAP / 章（game.js）
+全7面を3章に区切り、城を下から頂上へ登る縦スクロールの全体MAP（`gameState==='map'`／canvas描画 `drawMap`）。月・霧・火の粉・城のシルエットで雰囲気。提灯ノード＝クリア済み(灯る＋✓)／現在地(点滅)／未解放(南京錠)。`WORLDS`＝章、`LEVELS[].code`(1-1…)/`world`。タイトル「あそぶ」→MAP、ノードtapで開始、クリアで次を解放しMAPへ。進捗は `localStorage('nobore_progress')` に保存（`loadProgress/saveProgress`）。タップ判定は `mapTapAt`、慣性スクロールは `updateMap`。
+
+## 新ギミック（game.js / cave.js）
+- **動く台**（`platforms`）：乗ると一緒に運ばれる足場。横/縦に往復（`platCount`）。乗っている間 `blob.plat` で追従。
+- **滑る壁**（`slipWalls`）：貼り付くが `rules.slipSpeed` でゆっくり下へ滑り、板の下端で離脱→落下（`blob.slip`）。ソルバは“掴めて即発射できる”ので着地面に含める。
+
 ## cave.js（地形）
 各ステージ `gen`：`worldH` `seed` `gapBase/gapVar` `meander` `yStep` `nubCount` `hazardCount` `dangoCount` `bouncyCount`(バンパー) `boostCount`(気流) `chamberDepth/chamberWiden`(頂上の広間) `gateHalf`(ゲート開口) `bumperMove`(頂上バンパーの往復幅) `gateGuard`(ゲート番の見張り数) `gateMover`(動く致死スパイク数)。
 **左右に連続した壁があるので壁づたいに必ず上れる**（詰み防止）。下に床、上に光る出口を自動配置。

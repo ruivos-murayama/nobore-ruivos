@@ -210,6 +210,9 @@
   function onClear() {
     winning = false;
     gameState = 'clear';
+    progress.cleared[levelIndex] = true;   // 進捗：クリア記録＋次を解放＋保存
+    if (levelIndex + 1 < LEVELS.length) progress.unlocked = Math.max(progress.unlocked, levelIndex + 1);
+    saveProgress();
     const got = dangoGot(), tot = level.dango.length;
     totalDango += got;   // 累計はクリア時に加算（リスポーンでの再取得を二重計上しない）
     document.getElementById('clear-kicker').textContent = level.code + '  ' + (WORLDS[level.world - 1] ? WORLDS[level.world - 1].name : '');
@@ -446,9 +449,14 @@
 
   // ---- 入力（同フレーム発火）----
   function ptr(e) { const t = e.touches ? e.touches[0] : e; return { x: t.clientX, y: t.clientY }; }
-  function onDown(e) { if (gameState !== 'play' || !alive || winning) return; e.preventDefault(); if (!blob.stuck) return; const p = ptr(e); aim.active = true; aim.sx = p.x; aim.sy = p.y; aim.cx = p.x; aim.cy = p.y; timeScaleTarget = D.slowmo.chargeScale; }
-  function onMove(e) { if (!aim.active) return; e.preventDefault(); const p = ptr(e); aim.cx = p.x; aim.cy = p.y; }
+  function onDown(e) {
+    if (gameState === 'map') { const p = ptr(e); mapDrag.active = true; mapDrag.sx = p.x; mapDrag.sy = p.y; mapDrag.base = mapScroll; mapDrag.moved = false; mapDrag.last = p.y; mapScrollV = 0; e.preventDefault(); return; }
+    if (gameState !== 'play' || !alive || winning) return; e.preventDefault(); if (!blob.stuck) return; const p = ptr(e); aim.active = true; aim.sx = p.x; aim.sy = p.y; aim.cx = p.x; aim.cy = p.y; timeScaleTarget = D.slowmo.chargeScale; }
+  function onMove(e) {
+    if (gameState === 'map') { if (!mapDrag.active) return; const p = ptr(e); const d = p.y - mapDrag.sy; if (Math.abs(d) > 8) mapDrag.moved = true; mapScroll = clamp(mapDrag.base - d, 0, mapMaxScroll()); mapScrollV = -(p.y - mapDrag.last) * 55; mapDrag.last = p.y; e.preventDefault(); return; }
+    if (!aim.active) return; e.preventDefault(); const p = ptr(e); aim.cx = p.x; aim.cy = p.y; }
   function onUp(e) {
+    if (gameState === 'map') { e.preventDefault(); if (mapDrag.active && !mapDrag.moved) mapTapAt(mapDrag.sx, mapDrag.sy); mapDrag.active = false; return; }
     if (!aim.active) return; e.preventDefault(); aim.active = false; timeScaleTarget = 1;
     const a = aimVel(); if (a.pull < 6) return;
     if (launches <= 0) return;   // 念のため（通常はのこり0で着地した瞬間に失敗判定が入る）
@@ -464,6 +472,7 @@
   function poly(p) { ctx.beginPath(); for (let i = 0; i < p.length; i++) { if (i === 0) ctx.moveTo(p[i].x, p[i].y); else ctx.lineTo(p[i].x, p[i].y); } ctx.closePath(); }
 
   function render(alpha) {
+    if (gameState === 'map') { drawMap(); return; }   // ステージ選択MAP
     // 背景
     if (level) { const g = ctx.createLinearGradient(0, 0, 0, VH); g.addColorStop(0, level.palette.bg); g.addColorStop(1, shade(level.palette.bg, 0.6)); ctx.fillStyle = g; }
     else ctx.fillStyle = '#06202a';
@@ -718,6 +727,106 @@
     ctx.restore();
   }
 
+  // ============ ステージ選択MAP（城を下から頂上へ登る・章ごと／クリアで解放＋保存）============
+  let progress = { unlocked: 0, cleared: {} };
+  function loadProgress() { try { const s = JSON.parse(localStorage.getItem('nobore_progress')); if (s && typeof s.unlocked === 'number') progress = { unlocked: clamp(s.unlocked | 0, 0, LEVELS.length - 1), cleared: s.cleared || {} }; } catch (e) {} }
+  function saveProgress() { try { localStorage.setItem('nobore_progress', JSON.stringify(progress)); } catch (e) {} }
+
+  const MAP_SP = 156, MAP_TOP = 168, MAP_BOT = 150;
+  const mapContentH = () => MAP_TOP + (LEVELS.length - 1) * MAP_SP + MAP_BOT;
+  const mapNodeVY = (i) => MAP_TOP + (LEVELS.length - 1 - i) * MAP_SP;   // i=0(1-1)を最下部・上ほど高層
+  const mapNodeX = (i) => VW / 2 + ((i % 2 === 0) ? -1 : 1) * Math.min(VW * 0.21, 108);
+  const mapMaxScroll = () => Math.max(0, mapContentH() - VH);
+  let mapScroll = 0, mapScrollV = 0, mapEmbers = [], mapFog = [];
+  const mapDrag = { active: false, sx: 0, sy: 0, base: 0, moved: false, last: 0, lastT: 0, vel: 0 };
+
+  function initMapFx() {
+    const H = mapContentH();
+    mapEmbers = []; for (let i = 0; i < 40; i++) mapEmbers.push({ x: rand(0, VW), y: rand(0, H), s: rand(1.4, 4), vy: rand(-30, -9), ph: rand(0, 6.28) });
+    mapFog = []; for (let i = 0; i < 8; i++) mapFog.push({ x: rand(0, VW), y: rand(0, H), w: rand(170, 360), vx: rand(7, 20) * (i % 2 ? 1 : -1), a: rand(0.04, 0.10) });
+  }
+  function enterMap(focus) {
+    const f = clamp((focus == null) ? Math.min(progress.unlocked, LEVELS.length - 1) : focus, 0, LEVELS.length - 1);
+    gameState = 'map'; hideOverlays(); setSkin(D.stages[f].palette);
+    if (!mapEmbers.length) initMapFx();
+    mapScroll = clamp(mapNodeVY(f) - VH * 0.56, 0, mapMaxScroll()); mapScrollV = 0;
+  }
+  function hideOverlays() { for (const o of ['title', 'clear', 'allclear']) { const e = document.getElementById(o); if (e) e.classList.add('hidden'); } const h = document.getElementById('hud'); if (h) h.classList.add('hidden'); }
+  function updateMap(dt) {
+    if (!mapDrag.active) { mapScroll = clamp(mapScroll + mapScrollV * dt, 0, mapMaxScroll()); mapScrollV *= Math.pow(0.002, dt); if (Math.abs(mapScrollV) < 3) mapScrollV = 0; }
+    for (const e of mapEmbers) { e.y += e.vy * dt; e.ph += dt * 1.6; if (e.y < -12) { e.y = mapContentH() + 12; e.x = rand(0, VW); } }
+    for (const f of mapFog) { f.x += f.vx * dt; if (f.x < -f.w) f.x = VW + f.w; if (f.x > VW + f.w) f.x = -f.w; }
+  }
+  function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function pagoda(cx, vy, w, par, col, alpha) {   // 城（天守）シルエット：3層の屋根
+    const y = vy - mapScroll * par; if (y < -260 || y > VH + 120) return;
+    ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = col;
+    for (let t = 0; t < 3; t++) { const tw = w * (1 - t * 0.2), ty = y - t * w * 0.5; ctx.fillRect(cx - tw * 0.32, ty - w * 0.22, tw * 0.64, w * 0.26); ctx.beginPath(); ctx.moveTo(cx - tw / 2, ty - w * 0.18); ctx.lineTo(cx - tw * 0.32, ty - w * 0.42); ctx.lineTo(cx + tw * 0.32, ty - w * 0.42); ctx.lineTo(cx + tw / 2, ty - w * 0.18); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  }
+  function drawMap() {
+    const g = ctx.createLinearGradient(0, 0, 0, VH); g.addColorStop(0, '#0a1126'); g.addColorStop(1, '#05060e'); ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+    // 月（上空・遅いパララックス）
+    const moonY = (MAP_TOP - 96) - mapScroll * 0.32;
+    if (moonY > -80 && moonY < VH + 80) { ctx.save(); ctx.fillStyle = '#f3eccf'; ctx.beginPath(); ctx.arc(VW * 0.74, moonY, 44, 0, 6.28); ctx.fill(); ctx.globalAlpha = 1; ctx.fillStyle = '#0a1126'; ctx.beginPath(); ctx.arc(VW * 0.74 + 15, moonY - 8, 40, 0, 6.28); ctx.fill(); ctx.restore(); }
+    // 城のシルエット（天守＝最上層、麓＝最下層）
+    pagoda(VW * 0.5, mapNodeVY(LEVELS.length - 1) - 30, 150, 0.6, '#0c1430', 0.85);
+    pagoda(VW * 0.28, mapNodeVY(0) + 80, 120, 0.6, '#0b0f24', 0.8);
+    // 霧
+    for (const f of mapFog) { const sy = f.y - mapScroll; if (sy < -120 || sy > VH + 120) continue; ctx.fillStyle = `rgba(180,200,255,${f.a})`; ctx.beginPath(); ctx.ellipse(f.x, sy, f.w, 28, 0, 0, 6.28); ctx.fill(); }
+    // 火の粉
+    for (const e of mapEmbers) { const sy = e.y - mapScroll; if (sy < -12 || sy > VH + 12) continue; ctx.globalAlpha = 0.18 + 0.32 * (Math.sin(e.ph) + 1) / 2; ctx.fillStyle = '#ffcf6a'; ctx.beginPath(); ctx.arc(e.x, sy, e.s, 0, 6.28); ctx.fill(); } ctx.globalAlpha = 1;
+    // 登路（ノード間の点線・クリア済みは灯る）
+    ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.setLineDash([2, 13]);
+    for (let i = 0; i < LEVELS.length - 1; i++) {
+      ctx.strokeStyle = progress.cleared[i] ? 'rgba(255,207,106,0.85)' : 'rgba(255,255,255,0.16)';
+      ctx.beginPath(); ctx.moveTo(mapNodeX(i), mapNodeVY(i) - mapScroll); ctx.lineTo(mapNodeX(i + 1), mapNodeVY(i + 1) - mapScroll); ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.lineCap = 'butt';
+    // 章バナー＋ノード
+    ctx.textAlign = 'center';
+    for (let i = 0; i < LEVELS.length; i++) {
+      const L = LEVELS[i], x = mapNodeX(i), y = mapNodeVY(i) - mapScroll;
+      if (i === 0 || LEVELS[i - 1].world !== L.world) {
+        const by = y - MAP_SP * 0.5;
+        if (by > -30 && by < VH + 30) { const w = WORLDS[L.world - 1]; ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(20, by, VW - 40, 1.5); ctx.fillStyle = 'rgba(214,228,255,0.55)'; ctx.font = 'bold 13px "Noto Sans JP",sans-serif'; ctx.fillText('第' + w.n + '章  ' + w.name, VW / 2, by + 24); }
+      }
+      if (y < -70 || y > VH + 70) continue;
+      drawMapNode(i, x, y);
+    }
+    // ヘッダー
+    ctx.fillStyle = 'rgba(5,6,14,0.72)'; ctx.fillRect(0, 0, VW, 44);
+    ctx.fillStyle = '#9fc4ff'; ctx.font = 'bold 17px "Noto Sans JP",sans-serif'; ctx.textAlign = 'center'; ctx.fillText('のぼれRUIVOSくん', VW / 2, 29);
+    ctx.textAlign = 'left';
+  }
+  function drawMapNode(i, x, y) {
+    const L = LEVELS[i], pal = D.stages[i].palette;
+    const unlocked = i <= progress.unlocked, cleared = !!progress.cleared[i], current = (i === progress.unlocked);
+    if (unlocked) { ctx.save(); ctx.globalAlpha = cleared ? 0.45 : (0.35 + 0.28 * (Math.sin(performance.now() / 280) + 1) / 2); ctx.fillStyle = pal.accent; ctx.beginPath(); ctx.arc(x, y, 42, 0, 6.28); ctx.fill(); ctx.restore(); }
+    const r = 27;
+    ctx.lineWidth = 3.5; ctx.strokeStyle = unlocked ? pal.accent : 'rgba(255,255,255,0.2)';
+    ctx.fillStyle = unlocked ? shade(pal.wall, 1.25) : '#11162a';
+    rrect(x - r, y - r, r * 2, r * 2, 11); ctx.fill(); ctx.stroke();
+    if (current) { ctx.strokeStyle = pal.accent; ctx.lineWidth = 2; ctx.globalAlpha = 0.5 + 0.5 * Math.sin(performance.now() / 240); rrect(x - r - 5, y - r - 5, r * 2 + 10, r * 2 + 10, 14); ctx.stroke(); ctx.globalAlpha = 1; }
+    ctx.textAlign = 'center';
+    if (!unlocked) {   // 鍵（小さな南京錠）
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y - 3, 7, Math.PI, 0); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; rrect(x - 9, y - 3, 18, 14, 3); ctx.fill();
+    } else {
+      ctx.fillStyle = pal.accent; ctx.font = 'bold 20px "Noto Sans JP",sans-serif'; ctx.fillText(L.code, x, y + 7);
+      if (cleared) { ctx.strokeStyle = '#ffcf6a'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x + r - 4, y - r - 2); ctx.lineTo(x + r + 3, y - r + 5); ctx.lineTo(x + r + 12, y - r - 8); ctx.stroke(); ctx.lineCap = 'butt'; }
+    }
+    ctx.fillStyle = unlocked ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.3)';
+    ctx.font = 'bold 13px "Noto Sans JP",sans-serif'; ctx.fillText(L.name, x, y + r + 19);
+    ctx.textAlign = 'left';
+  }
+  function mapTapAt(px, py) {
+    for (let i = 0; i < LEVELS.length; i++) {
+      const x = mapNodeX(i), y = mapNodeVY(i) - mapScroll;
+      if (Math.hypot(px - x, py - y) < 38) { if (i <= progress.unlocked) { ac(); startLevel(i); } else { beep(220, 0.12, 'square', 0.12, 160); } return; }
+    }
+  }
+
   // ---- UI ----
   //  ステージのパレットを CSS 変数へ流し込む（UIも同じ3色＝フラットで統一）
   function setSkin(p) {
@@ -733,7 +842,8 @@
     const j = document.getElementById('jumps');
     if (j) j.classList.toggle('low', launches <= RU.lowWarnAt);
   }
-  function startGame() { ac(); totalDango = 0; totalTries = 0; gameState = 'play'; loadLevel(0); show('play'); }
+  function startGame() { ac(); totalDango = 0; totalTries = 0; enterMap(); }   // タイトル→全体MAP
+  function startLevel(i) { gameState = 'play'; loadLevel(i); show('play'); }    // MAP→ステージ開始
   // タップでも確実に発火させる（スマホで click が合成されない/握りつぶされる対策）。
   //  指のブレ(>12px)はタップ扱いにしない＝スクロール誤爆を防ぐ。touchで発火したら直後の合成clickは無視（二重発火ガード）。
   function bindTap(id, fn) {
@@ -747,7 +857,7 @@
   bindTap('btn-start', startGame);
   bindTap('btn-replay', () => { gameState = 'play'; loadLevel(levelIndex); show('play'); });
   bindTap('btn-next', () => {
-    if (levelIndex + 1 < LEVELS.length) { gameState = 'play'; loadLevel(levelIndex + 1); show('play'); }
+    if (levelIndex + 1 < LEVELS.length) { enterMap(levelIndex + 1); }   // 全体MAPへ（次が解放された状態で表示）
     else { gameState = 'allclear'; document.getElementById('allclear-stats').innerHTML = '<div class="stats">' + `<div class="stat-row"><span class="k">あつめた しずく</span><span class="v">${totalDango}</span></div>` + `<div class="stat-row"><span class="k">そう ちょうせん</span><span class="v">${totalTries}</span></div>` + '</div>'; show('allclear'); }
   });
   bindTap('btn-home', () => { gameState = 'title'; setSkin(D.stages[0].palette); show('title'); });
@@ -763,6 +873,7 @@
     if (popFlash > 0) popFlash = Math.max(0, popFlash - dt / 0.22);
     if (outMsg > 0) outMsg = Math.max(0, outMsg - dt);
     if (gameState === 'play' && !alive) { deathT -= dt; if (deathT <= 0) spawn(); }
+    if (gameState === 'map') updateMap(dt);
 
     if (gameState === 'play' && winning) { updateWin(dt); }
     else if (gameState === 'play') { acc += dt * timeScale; let guard = 0; while (acc >= h && guard++ < 8) { if (freeze > 0) { freeze--; acc -= h; continue; } stepFixed(h); acc -= h; } }
@@ -781,5 +892,5 @@
     render(clamp(acc / h, 0, 1));
     requestAnimationFrame(frame);
   }
-  initSpores(); requestAnimationFrame(frame);
+  loadProgress(); initSpores(); requestAnimationFrame(frame);
 })();
