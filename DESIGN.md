@@ -66,15 +66,17 @@
 **縛り：飛ばし回数（↗）** — 1ステージで弾ける回数に上限（`LEVELS[].maxLaunch`）。使い切って出口に届かなければ「もう とべない…」で**やり直し**（致死とは別演出。挑戦+1）。**💧雫を拾うと回数が回復**（`rules.launchPerDango`）＝集めるほど長く飛べるリスク報酬で、難易度の調整弁になる。回数は**毎リスポーンで満タンに復帰**（死＝回数の枯渇で詰まない）。上限は各ステージとも**最短手数＋人間のミス分**に設定（最短手数は `/tmp/minlaunch.js` のBFSで計測。締める→`maxLaunch`を下げる）。残りが `rules.lowWarnAt` 以下でHUDが赤く点滅。
 
 ## ステージ選択MAP / 章（game.js）
-全9面を4章に区切り、城を下から頂上へ登る縦スクロールの全体MAP（`gameState==='map'`／canvas描画 `drawMap`）。月・霧・火の粉・城のシルエットで雰囲気。提灯ノード＝クリア済み(灯る＋✓)／現在地(点滅)／未解放(南京錠)。`WORLDS`＝章、`LEVELS[].code`(1-1…)/`world`。タイトル「あそぶ」→MAP、ノードtapで開始、クリアで次を解放しMAPへ。進捗は `localStorage('nobore_progress')` に保存（`loadProgress/saveProgress`）。タップ判定は `mapTapAt`、慣性スクロールは `updateMap`。MAPは `LEVELS.length` 駆動なので、面を増やしても自動で段数・章バナーが伸びる（要 `design.js stages[]` に同数の配色／`WORLDS` に章）。
-- 章: **第1章 月夜の外郭**(1-1〜1-3) → **第2章 城内のからくり**(2-1 動く台 / 2-2 滑る壁) → **第3章 天守へ**(3-1 / 3-2) → **第4章 月天楼**(4-1 浮雲の廊＝動く足場＋見張りの嵐 / 4-2 月天楼の極＝全ギミック総動員・最難)。難易度は終盤ほど飛ばし回数の余裕（`maxLaunch`−最短手数）を詰めて締める。
+全11面を6章に区切り、城を下から頂上へ登る縦スクロールの全体MAP（`gameState==='map'`／canvas描画 `drawMap`）。月・霧・火の粉・城のシルエットで雰囲気。提灯ノード＝クリア済み(灯る＋✓)／現在地(点滅)／未解放(南京錠)。`WORLDS`＝章、`LEVELS[].code`(1-1…)/`world`。タイトル「あそぶ」→MAP、ノードtapで開始、クリアで次を解放しMAPへ。進捗は `localStorage('nobore_progress')` に保存（`loadProgress/saveProgress`）。タップ判定は `mapTapAt`、慣性スクロールは `updateMap`。MAPは `LEVELS.length` 駆動なので、面を増やしても自動で段数・章バナーが伸びる（要 `design.js stages[]` に同数の配色／`WORLDS` に章）。**面を途中挿入すると進捗localStorageのindexがズレる→新規は必ず末尾に追加。**
+- 章: **第1章 月夜の外郭**(1-1〜1-3) → **第2章 城内のからくり**(2-1 動く台 / 2-2 滑る壁) → **第3章 天守へ**(3-1 / 3-2) → **第4章 月天楼**(4-1 浮雲の廊＝動く足場＋見張りの嵐 / 4-2 月天楼の極＝全ギミック総動員・最難) → **第5章 水攻め**(5-1 せまる水面＝強制スクロール床・中難度) → **第6章 岐路の大坑**(6-1 分かれ道＝本道≈56手の長丁場・ルート分岐で短縮)。難易度は終盤ほど飛ばし回数の余裕（`maxLaunch`−最短手数）を詰めて締める（5-1/6-1は概念ステージなので余裕は広め）。
 
 ## 新ギミック（game.js / cave.js）
 - **動く台**（`platforms`）：乗ると一緒に運ばれる足場。横/縦に往復（`platCount`）。乗っている間 `blob.plat` で追従。
 - **滑る壁**（`slipWalls`）：貼り付くが `rules.slipSpeed` でゆっくり下へ滑り、板の下端で離脱→落下（`blob.slip`）。ソルバは“掴めて即発射できる”ので着地面に含める。
+- **強制スクロールの床＝水攻め**（`gen.riseSpeed`）：下から水面 `floorY` がせり上がり、`blob.y+R>floorY` で即アウト（`drown()`）。上昇は **simTime基準**＝狙い中のスローモーで水もゆっくり＝考える時間は奪わず「もたつくと飲まれる」中難度の圧。毎リスポーンで下端へリセット。描画 `drawRiseFloor`＋画面下の青グロー警告。**時間依存のためBFSでは測れない**（幾何の最短はソルバ、実生存性は速度を控えめ44で担保）。
+- **ルート分岐の島（ピラー）＋近道の上昇気流**（`gen.forkCount`）：中央に縦長の島を置き左右に通路を割る。片側通路に上昇気流＝**近道**（気流で一気に上れる＝少ない手数）、反対側は普通の登り。外周の左右壁は不変なので必ず登れる（詰み防止）。島は `walls` に積むので `drawCave` で岩として描画、気流は `drawBoosts`。**50手級はBFSの探索深度超→`/tmp/greedy.js` の貪欲クライマーで検証**（6-1：本道≈56手／近道≈32手）。
 
 ## cave.js（地形）
-各ステージ `gen`：`worldH` `seed` `gapBase/gapVar` `meander` `yStep` `nubCount` `hazardCount` `dangoCount` `bouncyCount`(バンパー) `boostCount`(気流) `chamberDepth/chamberWiden`(頂上の広間) `gateHalf`(ゲート開口) `bumperMove`(頂上バンパーの往復幅) `gateGuard`(ゲート番の見張り数) `gateMover`(動く致死スパイク数)。
+各ステージ `gen`：`worldH` `seed` `gapBase/gapVar` `meander` `yStep` `nubCount` `hazardCount` `dangoCount` `bouncyCount`(バンパー) `boostCount`(気流) `chamberDepth/chamberWiden`(頂上の広間) `gateHalf`(ゲート開口) `bumperMove`(頂上バンパーの往復幅) `gateGuard`(ゲート番の見張り数) `gateMover`(動く致死スパイク数) `platCount`(動く台) `slipCount`(滑る壁) `riseSpeed`(水攻め＝強制スクロール床の上昇px/s) `forkCount`(ルート分岐の島＋近道気流)。
 **左右に連続した壁があるので壁づたいに必ず上れる**（詰み防止）。下に床、上に光る出口を自動配置。
 
 **頂上チャンバー（ゴール周りの広間）** — コリドー上端を左右へ大きく開いて「登りきった先の広間」を作る。広さは `gen.chamberWiden`（左右の開き／既定130）、縦の範囲は `gen.chamberDepth`（topからの深さ／既定300）。外へ膨らませるだけなので登路は途切れない。

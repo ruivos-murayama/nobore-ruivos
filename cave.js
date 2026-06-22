@@ -304,6 +304,29 @@
       slipWalls.push(panel);
     }
 
+    // ---- ルート分岐の島（ピラー）：中央に縦長の島を置き左右へ通路を割る。片側の通路に上昇気流＝“近道” ----
+    //  外周の左右壁は不変＝必ず登れる（詰み防止）。島はそこへ「分岐と手数の差」を足すだけ。
+    //  近道側＝気流で一気に上れる（少ない手数）／反対側＝普通の登り（手数多いが安全）。
+    const forkCount = p.forkCount || 0;
+    for (let i = 0; i < forkCount; i++) {
+      const yc = top + 560 + ((i + 0.5) / Math.max(1, forkCount)) * (bot - top - 1120);
+      const cxc = centerX(yc), hg = halfGap(yc);
+      const pw = Math.min(2 * hg - 190, 150);   // 島の幅：左右に約95px以上の通路を残す
+      if (pw < 64) continue;                     // 通路を確保できない高さなら島を置かない
+      const half = 150 + rng() * 60;             // 島の縦半径
+      walls.push([
+        { x: cxc, y: yc - half },
+        { x: cxc + pw / 2, y: yc - half * 0.45 },
+        { x: cxc + pw / 2, y: yc + half * 0.45 },
+        { x: cxc, y: yc + half },
+        { x: cxc - pw / 2, y: yc + half * 0.45 },
+        { x: cxc - pw / 2, y: yc - half * 0.45 },
+      ]);
+      const side = (i % 2 === 0) ? 1 : -1;       // 近道の気流を置く側（左右交互）
+      const bx = clampC(cxc + side * (pw / 2 + 46), 60, COL - 60);
+      boosts.push({ x: bx - 44, y: yc - half - 150, w: 88, h: half * 2 + 280, dx: 0, dy: -1 });   // 島より上まで伸ばす＝一気に上れる近道
+    }
+
     return { walls, hazards, bouncy, boosts, sentries, cloaks, movers, platforms, slipWalls, dango, start, goal, worldH: H };
   }
 

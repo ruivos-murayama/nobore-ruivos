@@ -110,6 +110,8 @@ const DESIGN = {
     { palette: { bg: '#0a0a14', wall: '#1d1b2a', accent: '#ffcf5c', blob: '#ff5d7a' } }, // 3-2 天守の頂（墨×金×紅）
     { palette: { bg: '#0b1530', wall: '#1d2c52', accent: '#cfe0ff', blob: '#ff8a4d' } }, // 4-1 浮雲の廊（群青×銀×橙）
     { palette: { bg: '#0c0a1e', wall: '#231f3e', accent: '#ffe6a0', blob: '#ff4d6d' } }, // 4-2 月天楼の極（漆黒×月金×緋）
+    { palette: { bg: '#07181f', wall: '#10333f', accent: '#5fd6e0', blob: '#ffb14d' } }, // 5-1 せまる水面（水底×藍×水青／琥珀blob）
+    { palette: { bg: '#0e0a16', wall: '#241a33', accent: '#c89bff', blob: '#5be0a0' } }, // 6-1 分かれ道（大坑×紫闇×松明／翠blob）
   ],
 
   // 目・影など共通

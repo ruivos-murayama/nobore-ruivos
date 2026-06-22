@@ -46,6 +46,8 @@
     { n: 2, name: '城内のからくり' },
     { n: 3, name: '天守へ' },
     { n: 4, name: '月天楼' },
+    { n: 5, name: '水攻め' },
+    { n: 6, name: '岐路の大坑' },
   ];
   // ---- ステージ（cave.js が形を生成。配色は design の stages・並びは一致）----
   //  code=「章-番」。maxLaunch＝飛ばし回数の上限（💧1個でRU.launchPerDango回 回復）。
@@ -60,6 +62,8 @@
     { code: '3-2', world: 3, name: '天守の頂',   sub: '総合・見張り乱立',   maxLaunch: 23, gen: { worldH: 2900, seed: 67, gapBase: 130, gapVar: 48, meander: 110, yStep: 68, nubCount: 10, hazardCount: 4, dangoCount: 7, bouncyCount: 5, sentryCount: 3, cloakCount: 2, gateHalf: 53, bumperMove: 95, gateGuard: 2, gateMover: 1 } }, // 最短19
     { code: '4-1', world: 4, name: '浮雲の廊',     sub: '動く足場と見張りの嵐', maxLaunch: 24, gen: { worldH: 2700, seed: 73, gapBase: 126, gapVar: 48, meander: 110, yStep: 68, nubCount: 9, hazardCount: 4, dangoCount: 6, bouncyCount: 3, sentryCount: 3, cloakCount: 2, platCount: 3, gateHalf: 52, bumperMove: 100, gateGuard: 2, gateMover: 1 } }, // 最短20・全ギミック
     { code: '4-2', world: 4, name: '月天楼の極', sub: 'すべての試練',       maxLaunch: 28, gen: { worldH: 3100, seed: 107, gapBase: 122, gapVar: 52, meander: 116, yStep: 66, nubCount: 11, hazardCount: 5, dangoCount: 7, bouncyCount: 4, sentryCount: 3, cloakCount: 2, platCount: 2, slipCount: 3, gateHalf: 50, bumperMove: 110, gateGuard: 2, gateMover: 2 } }, // 最短24・最難
+    { code: '5-1', world: 5, name: 'せまる水面', sub: 'せり上がる水から登りきれ', maxLaunch: 21, gen: { worldH: 2200, seed: 14, gapBase: 140, gapVar: 42, meander: 95, yStep: 72, nubCount: 6, hazardCount: 1, dangoCount: 6, bouncyCount: 1, sentryCount: 1, cloakCount: 0, gateHalf: 62, riseSpeed: 44 } }, // 最短14・水攻め（強制スクロール床）
+    { code: '6-1', world: 6, name: '分かれ道',   sub: '道を選んで登りきれ',     maxLaunch: 60, gen: { worldH: 5600, seed: 8, gapBase: 165, gapVar: 40, meander: 120, yStep: 76, nubCount: 4, hazardCount: 2, dangoCount: 10, bouncyCount: 2, sentryCount: 1, cloakCount: 0, gateHalf: 64, forkCount: 6 } }, // 本道≈56手/近道≈32手（貪欲クライマー計測）・ルート分岐
   ];
 
   // ---- 状態 ----
@@ -71,6 +75,7 @@
   let trauma = 0, flash = 0, timeScale = 1, timeScaleTarget = 1;
   let particles = [], spores = [], trail = 0;
   let alive = true, deathT = 0, tries = 0;
+  let floorY = 1e9, riseBubbles = [];           // 強制スクロールの床（水攻め）：水面のy（下からせり上がる）と泡
   let launches = 0, outMsg = 0;                 // 飛ばし回数：のこり / 「もう とべない…」演出タイマー
   let winning = false, winT = 0, winFlash = 0, winSpark = 0, winRings = [], winGX = 0, winGY = 0, winHold = 0;  // 到達演出
   let combo = 0, texts = [], boostT = 0, bumpChain = 0, freeze = 0, popFlash = 0;
@@ -109,6 +114,7 @@
     level.cloaks = g.cloaks ? g.cloaks.map(c => ({ x: c.x, y: c.y, used: false })) : [];
     level.dango = g.dango.map(d => ({ x: d.x, y: d.y, got: false }));
     level.start = g.start; level.goal = g.goal; level.worldH = g.worldH;
+    level.rise = level.gen.riseSpeed || 0;   // 強制スクロールの床（水攻め）の上昇速度 px/s（simTime基準）
     level.palette = (D.stages[i] && D.stages[i].palette) || D.stages[0].palette;
     setSkin(level.palette);
     tries = 0; particles = []; texts = []; combo = 0; spawn(); initSpores(); updateHUD();
@@ -120,6 +126,8 @@
     eyes.wide = 0; aim.active = false; alive = true; timeScale = 1; timeScaleTarget = 1; combo = 0; bumpChain = 0; freeze = 0; popFlash = 0;
     alert = 0; alarmPing = 0; cloakT = 0;   // simTime は連続させる（首振りは止めない）
     launches = level ? level.maxLaunch : 0; outMsg = 0;   // 飛ばし回数は毎リスポーン満タンに戻す
+    floorY = (level && level.rise) ? level.start.y + 170 : 1e9;            // 水面は毎リスポーンで下端へリセット
+    if (level && level.rise) { riseBubbles = []; for (let i = 0; i < 14; i++) riseBubbles.push({ x: rand(0, COL), off: rand(8, 280), s: rand(2, 5), sp: rand(22, 64), ph: rand(0, 6.28) }); }
     winning = false; winT = 0; winFlash = 0; winRings = []; winHold = 0;   // 到達演出のリセット
     if (level && level.cloaks) for (const c of level.cloaks) c.used = false;
     if (level && level.dango) for (const d of level.dango) d.got = false;        // 雫も毎リスポーンで復活
@@ -137,6 +145,12 @@
   function caught() {  // 見張りに発見された＝負け（専用のアラーム付き）
     if (!alive) return;
     beep(900, 0.12, 'square', 0.32, 240); setTimeout(() => beep(900, 0.12, 'square', 0.32, 240), 150);
+    die();
+  }
+  function drown() {  // せり上がる水面に飲まれた＝負け（水しぶき）
+    if (!alive) return;
+    for (let i = 0; i < 22; i++) { const a = -Math.PI / 2 + rand(-1.0, 1.0), s = rand(120, 480); particles.push({ x: clamp(blob.x + rand(-24, 24), 4, COL - 4), y: floorY, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color: i % 2 ? '#bfe9ff' : '#8fd0ff', size: rand(3, 8) }); }
+    beep(300, 0.2, 'sine', 0.2, 90); beep(150, 0.34, 'triangle', 0.16, 60);
     die();
   }
   function failNoMoves() {  // 飛ばし回数を使い切り、出口に届かず＝失敗→やり直し（致死とは別の演出）
@@ -292,6 +306,8 @@
     blob.px = blob.x; blob.py = blob.y;
     simTime += h;  // 首振りは常に進む（死亡演出中も止めない）
     if (!alive) { updateSquash(h); ageParticles(h); return; }
+    // 強制スクロールの床（水攻め）：下からせり上がり、触れたら即アウト（生存中のみ進む）
+    if (level.rise) { floorY -= level.rise * h; if (blob.y + R > floorY) { drown(); return; } }
     // 動くバンパー：左右に往復（基準bxからmove幅で）
     for (const b of level.bouncy) if (b.move) b.x = b.bx + b.move * Math.sin(simTime * b.mspeed + b.mphase);
     // 動く致死スパイク：位置更新＋衝突（飛行中も貼り付き中も即ミス）
@@ -501,7 +517,7 @@
     ctx.globalAlpha = 1;
 
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, COL, level.worldH); ctx.clip();
-    drawSentryCones(); drawCave(); drawSlipWalls(); drawPlatforms(); drawBouncy(); drawHazards(); drawMovers(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes();
+    drawSentryCones(); drawCave(); drawBoosts(); drawSlipWalls(); drawPlatforms(); drawBouncy(); drawHazards(); drawMovers(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes(); drawRiseFloor();
     let predicted = null;
     if (gameState === 'play' && aim.active) { const a = aimVel(); const tr = simTrajectory(a.vx, a.vy); predicted = tr.land; drawTrajectory(tr, a.charge); }
     if (winning) drawWinRings();
@@ -511,6 +527,13 @@
 
     ctx.restore();
     drawAlert();
+    if (level && level.rise && alive) {  // 水面が画面下から迫る警告（青いグロー＝早く登れ）
+      const zz = baseScale * cam.zoom, surfSY = VH / 2 + (floorY - cam.y) * zz;
+      const prox = clamp((VH - surfSY) / (VH * 0.5), 0, 1);
+      if (prox > 0.02) { const a = prox * (0.22 + 0.12 * Math.sin(performance.now() / 110));
+        const vg = ctx.createLinearGradient(0, VH, 0, VH * 0.5); vg.addColorStop(0, `rgba(60,140,225,${a})`); vg.addColorStop(1, 'rgba(60,140,225,0)');
+        ctx.fillStyle = vg; ctx.fillRect(0, VH * 0.5, VW, VH * 0.5); }
+    }
     if (flash > 0) { ctx.fillStyle = hexA(D.danger, flash * 0.5); ctx.fillRect(0, 0, VW, VH); }
     if (popFlash > 0 && level) { ctx.fillStyle = hexA(level.palette.accent, popFlash * 0.35); ctx.fillRect(0, 0, VW, VH); }
     if (winFlash > 0 && level) { ctx.fillStyle = `rgba(255,255,255,${winFlash * 0.55})`; ctx.fillRect(0, 0, VW, VH); }  // 着弾の白閃光
@@ -563,6 +586,24 @@
       const t = (performance.now() / 600) % 1;
       for (let y = ylo + (yhi - ylo) * t; y < yhi; y += 26) { ctx.beginPath(); ctx.moveTo(xm - 7, y - 4); ctx.lineTo(xm, y + 2); ctx.lineTo(xm + 7, y - 4); ctx.stroke(); }
     }
+  }
+  function drawRiseFloor() {  // 強制スクロールの床（水攻め）：下からせり上がる水面＋輝線＋泡
+    if (!level.rise || floorY > level.worldH + 60) return;
+    const tm = performance.now() / 1000, surf = floorY, bottomY = level.worldH + 120;
+    const wave = (x) => surf + Math.sin(x * 0.045 + tm * 3) * 6 + Math.sin(x * 0.12 - tm * 2.2) * 3.2;
+    const g = ctx.createLinearGradient(0, surf, 0, surf + 320);
+    g.addColorStop(0, 'rgba(150,212,255,0.50)'); g.addColorStop(0.45, 'rgba(56,128,212,0.58)'); g.addColorStop(1, 'rgba(16,44,104,0.78)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-20, bottomY); ctx.lineTo(-20, wave(-20));
+    for (let x = -20; x <= COL + 20; x += 22) ctx.lineTo(x, wave(x));
+    ctx.lineTo(COL + 20, bottomY); ctx.closePath(); ctx.fill();
+    // 泡（水中で上へ）
+    ctx.fillStyle = 'rgba(220,245,255,0.5)';
+    for (const b of riseBubbles) { const by = surf + b.off - ((tm * b.sp) % 300); if (by <= surf + 6) continue; ctx.globalAlpha = clamp((by - surf) / 60, 0, 1) * 0.5; ctx.beginPath(); ctx.arc(b.x, by, b.s, 0, 6.28); ctx.fill(); }
+    ctx.globalAlpha = 1;
+    // 水面の輝線
+    ctx.strokeStyle = 'rgba(225,247,255,0.9)'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.beginPath();
+    for (let x = -20; x <= COL + 20; x += 10) { const y = wave(x); x === -20 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    ctx.stroke();
   }
   function drawMovers() {  // 動く致死スパイク（往復するトゲ玉）＋スライド軌道
     if (!level.movers) return;
