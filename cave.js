@@ -128,9 +128,46 @@
     return { walls, hazards, bouncy: [], boosts: [], sentries: [], cloaks: [], movers: [], platforms: [], slipWalls, dango, hoops: [], start, goal, worldH: H, descent: true };
   }
 
+  // ---- フリースロー・タワー（shootout）：壁なし。タイトな輪を“パシュッ”と射抜くと上のエリアへワープ。最上段は左右に動く輪＝ゴール ----
+  //  各ボックス＝パッド（足場）＋その真上の狭い輪。輪を綺麗に射抜く＝ワープで次のパッドへ。外しても落ちて同じパッドに戻る（プレイ境界で取りこぼし無し）。
+  //  縦の間隔(spacing)＞最大到達高＝飛んで隣のパッドに乗れない＝必ず輪でしか上がれない（＝輪に意味が生まれる／壁登りで迂回できない）。
+  function buildShootout(p, COL) {
+    const boxes = Math.max(2, p.boxCount || 6);
+    const spacing = p.boxSpacing || 320;        // 縦の間隔（>最大到達高≈131px＝必ずワープでしか上がれない／壁登り迂回不可）
+    const rise = p.hoopRise || 110;             // パッド→フープの高さ（全力でぐんと昇り抜ける＝通過時≈866px/s上向き）
+    const gap = p.hoopGap || 44;                // 開口の半幅（タイト＝RUIVOSがピッタリ／角度窓≈±5°）
+    const rimR = p.hoopRimR || 11;
+    const xMin = p.boundMin || 80, xMax = p.boundMax || (COL - 80), cx = COL / 2;
+    const padTopMargin = p.topMargin || 220;
+    const padY0 = rise + padTopMargin + (boxes - 1) * spacing;   // 最下段パッドのy（pad上面）
+    const H = padY0 + 280;
+    const padHalf = (xMax - xMin) / 2 + 36;     // パッドはプレイ幅＋余白＝取りこぼし無し
+    const pads = [], hoops = [];
+    for (let i = 0; i < boxes; i++) {
+      const padY = padY0 - i * spacing;
+      pads.push([   // 薄い床（厚いと最大到達でも“次パッドの裏”に届いて貼り付く＝バグ。薄くして部屋の空きを最大登り＋R より大きく保つ）
+        { x: cx - padHalf, y: padY },
+        { x: cx + padHalf, y: padY },
+        { x: cx + padHalf, y: padY + 32 },
+        { x: cx - padHalf, y: padY + 32 },
+      ]);
+      const isGoal = (i === boxes - 1);
+      const hp = { x: cx, y: padY - rise, ang: -Math.PI / 2, gap, rimR };
+      if (isGoal) { hp.goal = true; hp.gap = p.goalGap || (gap + 6); hp.move = p.goalMove || 95; hp.mspeed = p.goalSpeed || 0.8; hp.mphase = 0; }
+      else hp.warpY = padY0 - (i + 1) * spacing;   // 次パッドのy（ワープ先）
+      hoops.push(hp);
+    }
+    const top = hoops[boxes - 1];
+    return {
+      walls: pads, hazards: [], bouncy: [], boosts: [], sentries: [], cloaks: [], movers: [], platforms: [], slipWalls: [], dango: [], catapults: [], hoops,
+      start: { x: cx, y: padY0 }, goal: { x: top.x, y: top.y }, worldH: H, shootout: true, bounds: { xMin, xMax, e: 0.55 },
+    };
+  }
+
   // --- 洞窟生成 ---
   function buildCave(p, COL) {
     if (p.descent) return buildDescent(p, COL);
+    if (p.shootout) return buildShootout(p, COL);
     const rng = mulberry32(p.seed);
     const H = p.worldH, yStep = p.yStep || 80;
     const cx0 = COL / 2;
