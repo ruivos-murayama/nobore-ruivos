@@ -272,13 +272,45 @@
     const sbx = clampC(roomCx - ledgeSide * 96, 100, COL - 100);
     bouncy.push({ x: sbx, bx: sbx, y: top + 176, r: 28, summit: true, move: p.bumperMove || 0, mspeed: 1.5, mphase: rng() * 6.28 });
 
-    // 上昇気流（ブースト帯）：入ると一気に加速する縦の流れ
+    // ---- カタパルト（射出花）：触れると“決まった方向へ”固定速度で撃ち出す＝設計された大跳躍 ----
+    //  バンパー(入射の反射＝読み)と違い、入射速度を無視して固定ベクトルで弾く。左右交互に「上＋反対の壁側」へ向けジグザグに撃ち上がる“跳ね祭り”の背骨。
+    //  ※気流より先に生成＝気流が「空きレーン」を探して避けられるように。左右壁は不変＝カタパルト無しでも登れる（到達性は別途保証）。
+    const catapults = [];
+    const catapultCount = p.catapultCount || 0;
+    for (let i = 0; i < catapultCount; i++) {
+      const yy = top + 420 + ((i + 0.5) / Math.max(1, catapultCount)) * (bot - top - 760);
+      const onLeft = (i % 2 === 0);
+      const pts = onLeft ? leftPts : rightPts;
+      let bi = 0, bd = Infinity;
+      for (let k = 0; k < pts.length; k++) { const dd = Math.abs(pts[k].y - yy); if (dd < bd) { bd = dd; bi = k; } }
+      const cxp = clampC(onLeft ? pts[bi].x + 42 : pts[bi].x - 42, 90, COL - 90);   // 壁の内側へ
+      const ang = -Math.PI / 2 + (onLeft ? 1 : -1) * 0.5;   // 真上(-90°)から反対の壁側へ±約29°＝ジグザグ
+      catapults.push({ x: cxp, y: pts[bi].y, r: 30, ang, power: p.catapultPower || 0 });
+    }
+
+    // 上昇気流（ブースト帯）：細い“壁ぎわの縦の流れ”。バンパー/カタパルトを内包しない“空きレーン”を探して置く
+    //  ＝囲い込まない＝「気流×挟まり」のソフトロック源を設計で作らない（広い柱はvx≈0で縦に永久ホバーする問題も回避）。
     const boosts = [];
     const boostCount = p.boostCount || 0;
+    const bw = p.boostWide || 100;   // 柱の幅（細いほど抜けやすい）
+    const laneClear = (rx, ry, rw, rh) => {   // 矩形内に的の中心が無いか（少しのはみ出しは許容）
+      for (const b of bouncy) if (b.x > rx - b.r * 0.4 && b.x < rx + rw + b.r * 0.4 && b.y > ry && b.y < ry + rh) return false;
+      for (const c of catapults) if (c.x > rx - c.r * 0.4 && c.x < rx + rw + c.r * 0.4 && c.y > ry && c.y < ry + rh) return false;
+      return true;
+    };
     for (let i = 0; i < boostCount; i++) {
-      const yy = top + 360 + ((i + 0.5) / Math.max(1, boostCount)) * (bot - top - 620);
-      const cx = centerX(yy), gw = halfGap(yy) * 1.5;
-      boosts.push({ x: cx - gw / 2, y: yy - 150, w: gw, h: 300, dx: 0, dy: -1 });
+      const yBand = top + 380 + ((i + 0.5) / Math.max(1, boostCount)) * (bot - top - 760);
+      let placed = null;
+      for (let dy = 0; dy <= 260 && !placed; dy += 36) for (const sgn of (dy === 0 ? [0] : [1, -1])) {
+        const yy = yBand + sgn * dy; if (yy < top + 320 || yy > bot - 320) continue;
+        const cx = centerX(yy), hg = halfGap(yy);
+        for (const side of (i % 2 ? [1, -1] : [-1, 1])) {
+          const bx = clampC(cx + side * (hg - bw * 0.5 - 12), 70, COL - 70);
+          const rx = bx - bw / 2, ry = yy - 160;
+          if (laneClear(rx, ry, bw, 320)) { placed = { x: rx, y: ry, w: bw, h: 320, dx: 0, dy: -1 }; break; }
+        }
+      }
+      if (placed) boosts.push(placed);
     }
 
     // 見張り（固定の目／首振りサーチライト）：壁際に設置しコリドー内側＋上下に傾けて視線を振る。
@@ -387,24 +419,16 @@
       boosts.push({ x: bx - 44, y: yc - half - 150, w: 88, h: half * 2 + 280, dx: 0, dy: -1 });   // 島より上まで伸ばす＝一気に上れる近道
     }
 
-    // ---- カタパルト（射出花）：触れると“決まった方向へ”固定速度で撃ち出す ----
-    //  バンパー(入射の反射＝読み)と違い、入射速度を無視して固定ベクトルで弾く＝設計された大跳躍。
-    //  左右交互に「上＋反対の壁側」へ向け、ジグザグに撃ち上がる“跳ね祭り”の背骨を作る。
-    //  ※あくまで快感の増幅装置。左右壁は不変＝カタパルト無しでも普通に登れる（到達性は別途保証＝詰まない）。
-    const catapults = [];
-    const catapultCount = p.catapultCount || 0;
-    for (let i = 0; i < catapultCount; i++) {
-      const yy = top + 420 + ((i + 0.5) / Math.max(1, catapultCount)) * (bot - top - 760);
-      const onLeft = (i % 2 === 0);
-      const pts = onLeft ? leftPts : rightPts;
-      let bi = 0, bd = Infinity;
-      for (let k = 0; k < pts.length; k++) { const dd = Math.abs(pts[k].y - yy); if (dd < bd) { bd = dd; bi = k; } }
-      const cxp = clampC(onLeft ? pts[bi].x + 42 : pts[bi].x - 42, 90, COL - 90);   // 壁の内側へ
-      const ang = -Math.PI / 2 + (onLeft ? 1 : -1) * 0.5;   // 真上(-90°)から反対の壁側へ±約29°＝ジグザグ
-      catapults.push({ x: cxp, y: pts[bi].y, r: 30, ang, power: p.catapultPower || 0 });
-    }
+    // 安全化（最終保険）：万一バンパー/カタパルトを“囲い込む”気流が残れば除外（島の近道気流など）（＝中心が柱の内側＝blobが開いた側へ抜けられず挟まる最悪形）。
+    //  柱は細い壁ぎわなので、的が中央寄り（中心が柱の外）なら blob は反対側へ抜けられる＝残してよい。万一は game.js の失速レスキューが保険。
+    const inRect = (px, py, bz, m) => (px > bz.x + m && px < bz.x + bz.w - m && py > bz.y && py < bz.y + bz.h);
+    const boostsSafe = boosts.filter(bz => {
+      for (const b of bouncy) if (inRect(b.x, b.y, bz, -b.r * 0.4)) return false;   // バンパー中心が柱内（少しはみ出しは許容）
+      for (const c of catapults) if (inRect(c.x, c.y, bz, -c.r * 0.4)) return false;
+      return true;
+    });
 
-    return { walls, hazards, bouncy, boosts, sentries, cloaks, movers, platforms, slipWalls, dango, catapults, start, goal, worldH: H };
+    return { walls, hazards, bouncy, boosts: boostsSafe, sentries, cloaks, movers, platforms, slipWalls, dango, catapults, start, goal, worldH: H };
   }
 
   const CAVE = { buildCave, circlePoly, pointInPoly, mulberry32, segSeg, segPoly };
