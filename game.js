@@ -1340,6 +1340,7 @@
     requestAnimationFrame(frame);
   }
   // URLモード：?pack=new＝新3面だけ連続プレイ ／ ?unlock=all（=?pack=all）＝全ステージ解放でMAPを自由に行き来
+  let __jump = -1;
   try {
     const q = new URLSearchParams(location.search);
     const lead = document.querySelector('#title .lead');
@@ -1351,6 +1352,10 @@
       freeRoam = true;
       if (lead) lead.textContent = '全ステージ自由に選ぶ';
     }
+    const go = q.get('go');   // ?go=11-1 … その面に直行（デバッグ/動作確認用。全解放扱い）
+    if (go) { const gi = LEVELS.findIndex(l => l.code === go); if (gi >= 0) { freeRoam = true; __jump = gi; } }
   } catch (e) {}
-  loadProgress(); initSpores(); requestAnimationFrame(frame);
+  loadProgress(); initSpores();
+  if (__jump >= 0) startLevel(__jump);
+  requestAnimationFrame(frame);
 })();
