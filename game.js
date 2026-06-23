@@ -68,6 +68,7 @@
     { code: '6-1', world: 6, name: '分かれ道',   sub: '道を選んで登りきれ',     maxLaunch: 60, gen: { worldH: 5600, seed: 8, gapBase: 165, gapVar: 40, meander: 120, yStep: 76, nubCount: 4, hazardCount: 2, dangoCount: 10, bouncyCount: 2, sentryCount: 1, cloakCount: 0, gateHalf: 64, forkCount: 6 } }, // 本道≈56手/近道≈32手（貪欲クライマー計測）・ルート分岐
     { code: '7-1', world: 7, name: '大滑降',     sub: '氷壁を滑り降りろ',       maxLaunch: 90, gen: { worldH: 18000, seed: 5, gapBase: 168, gapVar: 34, meander: 78, yStep: 70, hazardCount: 35, dangoCount: 30, descent: true, slipSpeed: 520 } }, // 滑降（上→下）・優しめ／爽快・5倍長（約18000px）
     { code: '8-1', world: 8, name: '跳躍祭',     sub: 'ただ、跳ねるだけ',       maxLaunch: 30, gen: { worldH: 2400, seed: 33, gapBase: 170, gapVar: 38, meander: 80, yStep: 72, nubCount: 3, hazardCount: 0, dangoCount: 9, bouncyCount: 5, sentryCount: 0, cloakCount: 0, gateHalf: 72, bumperMove: 0, catapultCount: 4, boostCount: 2 } }, // ★北極星ステージ：危険・ステルス0／カタパルト(射出花)＋バンパー＋気流で“弾けて跳ねる”連鎖だけを純粋に。広い門・潤沢な回数＝縛りで急かさない。最短≈8（カタパルト未使用でも登れる）
+    { code: '8-2', world: 8, name: '乱れ咲き',   sub: '射出花を乗り継いで',     maxLaunch: 22, gen: { worldH: 3000, seed: 19, gapBase: 150, gapVar: 44, meander: 100, yStep: 70, nubCount: 5, hazardCount: 4, dangoCount: 10, bouncyCount: 7, sentryCount: 0, cloakCount: 0, gateHalf: 56, bumperMove: 90, catapultCount: 6, boostCount: 2 } }, // 北極星テイストのまま難度↑：同じ“弾けて跳ねる”を高く長く狭く。射出花6＋バンパー7の長い連鎖／少量トゲで雑な弧を罰する／門狭め＋頂上バンパー往復／回数を締めて連鎖と💧回収を要求。最短≈9（BFS・カタパルト無し／💧10で最大+10回復の安全弁）
   ];
 
   // ---- 状態 ----

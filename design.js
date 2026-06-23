@@ -115,6 +115,7 @@ const DESIGN = {
     { palette: { bg: '#0e0a16', wall: '#241a33', accent: '#c89bff', blob: '#5be0a0' } }, // 6-1 分かれ道（大坑×紫闇×松明／翠blob）
     { palette: { bg: '#08203a', wall: '#1f5a85', accent: '#a9e8ff', blob: '#ff6b4a' } }, // 7-1 大滑降（氷瀑×氷青壁×水晶／緋blob）
     { palette: { bg: '#1a0e2e', wall: '#352350', accent: '#ffd35e', blob: '#4de0ff' } }, // 8-1 跳躍祭（祝祭紫×黄金×水光blob＝弾けが映える祝祭色）
+    { palette: { bg: '#1f0a2a', wall: '#3a1750', accent: '#ff6fae', blob: '#5ef0d0' } }, // 8-2 乱れ咲き（濃紫×薔薇金×新緑blob＝より熱い“咲き乱れ”の難所色）
   ],
 
   // 目・影など共通
