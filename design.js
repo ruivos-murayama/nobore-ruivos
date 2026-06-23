@@ -37,6 +37,7 @@ const DESIGN = {
     boostAccel: 5600,        // ★ 上昇気流の加速 px/s²
     boostMaxSpeed: 2300,     // 気流での速度上限
     bumperChainPitch: 150,   // ★ 連続ヒットで上がる音程の刻み
+    catapultPower: 1650,     // ★ カタパルト（射出花）の撃ち出し速度 px/s。入射を無視し固定ベクトルで“弾く”＝設計された大跳躍。gen.catapultPower で個別上書き可
   },
   combo: { base: 720, pitchStep: 90 },  // コンボ雫：連続回収で音程上昇
 
@@ -113,6 +114,7 @@ const DESIGN = {
     { palette: { bg: '#07181f', wall: '#10333f', accent: '#5fd6e0', blob: '#ffb14d' } }, // 5-1 せまる水面（水底×藍×水青／琥珀blob）
     { palette: { bg: '#0e0a16', wall: '#241a33', accent: '#c89bff', blob: '#5be0a0' } }, // 6-1 分かれ道（大坑×紫闇×松明／翠blob）
     { palette: { bg: '#08203a', wall: '#1f5a85', accent: '#a9e8ff', blob: '#ff6b4a' } }, // 7-1 大滑降（氷瀑×氷青壁×水晶／緋blob）
+    { palette: { bg: '#1a0e2e', wall: '#352350', accent: '#ffd35e', blob: '#4de0ff' } }, // 8-1 跳躍祭（祝祭紫×黄金×水光blob＝弾けが映える祝祭色）
   ],
 
   // 目・影など共通

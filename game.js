@@ -49,6 +49,7 @@
     { n: 5, name: '水攻め' },
     { n: 6, name: '岐路の大坑' },
     { n: 7, name: '氷瀑' },
+    { n: 8, name: '歓喜泉' },
   ];
   // ---- ステージ（cave.js が形を生成。配色は design の stages・並びは一致）----
   //  code=「章-番」。maxLaunch＝飛ばし回数の上限（💧1個でRU.launchPerDango回 回復）。
@@ -66,6 +67,7 @@
     { code: '5-1', world: 5, name: 'せまる水面', sub: 'せり上がる水から登りきれ', maxLaunch: 21, gen: { worldH: 2200, seed: 14, gapBase: 140, gapVar: 42, meander: 95, yStep: 72, nubCount: 6, hazardCount: 1, dangoCount: 6, bouncyCount: 1, sentryCount: 1, cloakCount: 0, gateHalf: 62, riseSpeed: 30, riseAccel: 14, riseMax: 135 } }, // 最短14・水攻め（初速ゆっくり→加速→上限135／急げば逃げ切れる）
     { code: '6-1', world: 6, name: '分かれ道',   sub: '道を選んで登りきれ',     maxLaunch: 60, gen: { worldH: 5600, seed: 8, gapBase: 165, gapVar: 40, meander: 120, yStep: 76, nubCount: 4, hazardCount: 2, dangoCount: 10, bouncyCount: 2, sentryCount: 1, cloakCount: 0, gateHalf: 64, forkCount: 6 } }, // 本道≈56手/近道≈32手（貪欲クライマー計測）・ルート分岐
     { code: '7-1', world: 7, name: '大滑降',     sub: '氷壁を滑り降りろ',       maxLaunch: 90, gen: { worldH: 18000, seed: 5, gapBase: 168, gapVar: 34, meander: 78, yStep: 70, hazardCount: 35, dangoCount: 30, descent: true, slipSpeed: 520 } }, // 滑降（上→下）・優しめ／爽快・5倍長（約18000px）
+    { code: '8-1', world: 8, name: '跳躍祭',     sub: 'ただ、跳ねるだけ',       maxLaunch: 30, gen: { worldH: 2400, seed: 33, gapBase: 170, gapVar: 38, meander: 80, yStep: 72, nubCount: 3, hazardCount: 0, dangoCount: 9, bouncyCount: 5, sentryCount: 0, cloakCount: 0, gateHalf: 72, bumperMove: 0, catapultCount: 4, boostCount: 2 } }, // ★北極星ステージ：危険・ステルス0／カタパルト(射出花)＋バンパー＋気流で“弾けて跳ねる”連鎖だけを純粋に。広い門・潤沢な回数＝縛りで急かさない。最短≈8（カタパルト未使用でも登れる）
   ];
 
   // ---- 状態 ----
@@ -115,6 +117,7 @@
     const g = CAVE.buildCave(level.gen, COL);
     level.walls = g.walls; level.hazards = g.hazards; level.bouncy = g.bouncy; level.boosts = g.boosts; level.sentries = g.sentries; level.movers = g.movers || [];
     level.platforms = g.platforms || []; level.slipWalls = g.slipWalls || [];
+    level.catapults = g.catapults ? g.catapults.map(c => ({ x: c.x, y: c.y, r: c.r, ang: c.ang, power: c.power, cool: 0 })) : [];
     level.cloaks = g.cloaks ? g.cloaks.map(c => ({ x: c.x, y: c.y, used: false })) : [];
     level.dango = g.dango.map(d => ({ x: d.x, y: d.y, got: false }));
     level.start = g.start; level.goal = g.goal; level.worldH = g.worldH;
@@ -133,6 +136,7 @@
     def.ang = 0; def.sx = 1; def.sy = 1; def.vsx = 0; def.vsy = 0; def.offx = 0; def.offy = 0;
     eyes.wide = 0; aim.active = false; alive = true; timeScale = 1; timeScaleTarget = 1; combo = 0; bumpChain = 0; freeze = 0; popFlash = 0;
     alert = 0; alarmPing = 0; cloakT = 0;   // simTime は連続させる（首振りは止めない）
+    if (level && level.catapults) for (const c of level.catapults) c.cool = 0;   // 射出花のクールダウンを初期化
     launches = level ? level.maxLaunch : 0; outMsg = 0;   // 飛ばし回数は毎リスポーン満タンに戻す
     floorY = (level && level.rise) ? level.start.y + 170 : 1e9;            // 水面は毎リスポーンで下端へリセット
     floorVel = level ? level.rise : 0;                                     // 上昇速度も初速へリセット（加速し直す）
@@ -367,6 +371,25 @@
           if (bumpChain >= 2) { texts.push({ x: blob.x, y: blob.y - 22, n: bumpChain, life: 1 }); popFlash = Math.min(0.5, bumpChain * 0.1); }
         }
       }
+      // カタパルト（射出花）：入射を無視して固定ベクトルで撃ち出す＝設計された“弾け”の連鎖
+      for (const c of level.catapults) {
+        if (c.cool > 0) { c.cool--; continue; }
+        const dx = blob.x - c.x, dy = blob.y - c.y, rr = R + c.r;
+        if (dx * dx + dy * dy < rr * rr) {
+          const pw = c.power || GM.catapultPower, ca = Math.cos(c.ang), sa = Math.sin(c.ang);
+          blob.x = c.x + ca * rr; blob.y = c.y + sa * rr;   // 射出口の先へ出す
+          blob.vx = ca * pw; blob.vy = sa * pw;             // 入射速度は捨てる＝必ず同じ弧で大跳躍
+          blob.ignoreT = P.launchIgnoreSteps; c.cool = 6;   // 直後の壁吸着＆多重発火を抑止
+          bumpChain++;                                       // バンパー連鎖と共有＝祭りが加速（音程・リングが伸びる）
+          impulseSquash(c.ang, 0.55, 1 / 0.55);             // 進行方向へ強く伸びる
+          sfx.bounce(bumpChain - 1); vibe(D.haptics.land);
+          burstRing(blob.x, blob.y, level.palette.accent, 20 + bumpChain * 5);
+          addTrauma(0.4 + bumpChain * 0.05); freeze = Math.max(freeze, 3);   // 強めのヒットストップ＝“ドンッ”
+          beep(520 + Math.min(bumpChain, 8) * GM.bumperChainPitch, 0.12, 'sawtooth', 0.16, 1400);  // 撃ち出し音
+          texts.push({ x: blob.x, y: blob.y - 26, txt: '↑↑', life: 0.8, good: true });
+          popFlash = Math.min(0.6, 0.3 + bumpChain * 0.08);
+        }
+      }
       // 着地：動く台（乗る）→ 滑る壁（貼り付くが滑る）→ 通常壁
       if (blob.ignoreT <= 0) {
         let done = false;
@@ -536,7 +559,7 @@
     ctx.globalAlpha = 1;
 
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, COL, level.worldH); ctx.clip();
-    drawSentryCones(); drawCave(); drawBoosts(); drawSlipWalls(); drawPlatforms(); drawBouncy(); drawHazards(); drawMovers(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes(); drawRiseFloor();
+    drawSentryCones(); drawCave(); drawBoosts(); drawSlipWalls(); drawPlatforms(); drawBouncy(); drawCatapults(); drawHazards(); drawMovers(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes(); drawRiseFloor();
     let predicted = null;
     if (gameState === 'play' && aim.active) { const a = aimVel(); const tr = simTrajectory(a.vx, a.vy); predicted = tr.land; drawTrajectory(tr, a.charge); }
     if (winning) drawWinRings();
@@ -666,6 +689,33 @@
       ctx.fillStyle = level.palette.accent; ctx.beginPath(); ctx.ellipse(b.x, b.y, b.r * pu, b.r / pu, 0, 0, 6.28); ctx.fill(); ctx.restore();
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.66, 0, 6.28); ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.2, 0, 6.28); ctx.fill();
+    }
+  }
+  function drawCatapults() {  // カタパルト（射出花）：固定方向へ撃ち出すランチャー
+    if (!level.catapults) return;
+    const t = performance.now() / 1000;
+    for (const c of level.catapults) {
+      const pulse = 1 + Math.sin(t * 5 + c.x) * 0.08;
+      ctx.save();
+      ctx.translate(c.x, c.y); ctx.rotate(c.ang + Math.PI / 2);   // ローカル: 上(-y)＝射出方向
+      // 射出方向へ外へ流れる推力チェブロン＝「ここから撃ち出す」を強く示す
+      ctx.strokeStyle = hexA(level.palette.accent, 0.7); ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      for (let k = 0; k < 3; k++) {
+        const yy = -c.r * 1.15 - ((t * 90) % 22) - k * 22;
+        ctx.globalAlpha = clamp(0.9 - k * 0.28, 0, 1);
+        ctx.beginPath(); ctx.moveTo(-14, yy + 12); ctx.lineTo(0, yy); ctx.lineTo(14, yy + 12); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // 発光する台座（リング）
+      ctx.shadowColor = level.palette.accent; ctx.shadowBlur = 26;
+      ctx.fillStyle = level.palette.accent;
+      ctx.beginPath(); ctx.arc(0, 0, c.r * pulse, 0, 6.28); ctx.fill();
+      ctx.shadowBlur = 0;
+      // 内側の暗いくぼみ＋明るい発射ノズル（白い三角＝撃ち出す向きを断定）
+      ctx.fillStyle = shade(level.palette.bg, 0.45); ctx.beginPath(); ctx.arc(0, 0, c.r * 0.62, 0, 6.28); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.moveTo(0, -c.r * 0.66); ctx.lineTo(c.r * 0.42, c.r * 0.34); ctx.lineTo(-c.r * 0.42, c.r * 0.34); ctx.closePath(); ctx.fill();
+      ctx.restore();
     }
   }
   function drawSentryCones() {  // 見張りの視線（壁で遮られて見える＝cave描画前に描く）

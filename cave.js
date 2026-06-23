@@ -387,7 +387,24 @@
       boosts.push({ x: bx - 44, y: yc - half - 150, w: 88, h: half * 2 + 280, dx: 0, dy: -1 });   // 島より上まで伸ばす＝一気に上れる近道
     }
 
-    return { walls, hazards, bouncy, boosts, sentries, cloaks, movers, platforms, slipWalls, dango, start, goal, worldH: H };
+    // ---- カタパルト（射出花）：触れると“決まった方向へ”固定速度で撃ち出す ----
+    //  バンパー(入射の反射＝読み)と違い、入射速度を無視して固定ベクトルで弾く＝設計された大跳躍。
+    //  左右交互に「上＋反対の壁側」へ向け、ジグザグに撃ち上がる“跳ね祭り”の背骨を作る。
+    //  ※あくまで快感の増幅装置。左右壁は不変＝カタパルト無しでも普通に登れる（到達性は別途保証＝詰まない）。
+    const catapults = [];
+    const catapultCount = p.catapultCount || 0;
+    for (let i = 0; i < catapultCount; i++) {
+      const yy = top + 420 + ((i + 0.5) / Math.max(1, catapultCount)) * (bot - top - 760);
+      const onLeft = (i % 2 === 0);
+      const pts = onLeft ? leftPts : rightPts;
+      let bi = 0, bd = Infinity;
+      for (let k = 0; k < pts.length; k++) { const dd = Math.abs(pts[k].y - yy); if (dd < bd) { bd = dd; bi = k; } }
+      const cxp = clampC(onLeft ? pts[bi].x + 42 : pts[bi].x - 42, 90, COL - 90);   // 壁の内側へ
+      const ang = -Math.PI / 2 + (onLeft ? 1 : -1) * 0.5;   // 真上(-90°)から反対の壁側へ±約29°＝ジグザグ
+      catapults.push({ x: cxp, y: pts[bi].y, r: 30, ang, power: p.catapultPower || 0 });
+    }
+
+    return { walls, hazards, bouncy, boosts, sentries, cloaks, movers, platforms, slipWalls, dango, catapults, start, goal, worldH: H };
   }
 
   const CAVE = { buildCave, circlePoly, pointInPoly, mulberry32, segSeg, segPoly };
