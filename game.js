@@ -71,7 +71,7 @@
     { code: '8-1', world: 8, name: '跳躍祭',     sub: 'ただ、跳ねるだけ',       maxLaunch: 30, gen: { worldH: 2400, seed: 33, gapBase: 170, gapVar: 38, meander: 80, yStep: 72, nubCount: 3, hazardCount: 0, dangoCount: 9, bouncyCount: 5, sentryCount: 0, cloakCount: 0, gateHalf: 72, bumperMove: 0, catapultCount: 4, boostCount: 0 } }, // ★北極星ステージ：危険・ステルス0／カタパルト(射出花)＋バンパーで“弾けて跳ねる”連鎖だけを純粋に。広い門・潤沢な回数＝縛りで急かさない。最短≈8。※気流(boost)は外した＝気流柱の縦ホバー＆気流×バンパー挟まりのソフトロックを根絶（保険に失速レスキューもエンジン側に常備）
     { code: '8-2', world: 8, name: '乱れ咲き',   sub: '射出花を乗り継いで',     maxLaunch: 22, gen: { worldH: 3000, seed: 19, gapBase: 150, gapVar: 44, meander: 100, yStep: 70, nubCount: 5, hazardCount: 4, dangoCount: 10, bouncyCount: 5, sentryCount: 0, cloakCount: 0, gateHalf: 56, bumperMove: 90, catapultCount: 6, boostCount: 0 } }, // 北極星テイストのまま難度↑：同じ“弾けて跳ねる”を高く長く狭く。射出花6＋バンパー6の長い連鎖／少量トゲで雑な弧を罰する／門狭め＋頂上バンパー往復／回数を締めて連鎖と💧回収を要求。最短≈10（BFS・カタパルト無し／💧10で最大+10回復の安全弁）。※バンパーは密集による挟まり多発を避け5に（保険に失速レスキュー常備）
     { code: '8-3', world: 8, name: '百花繚乱', sub: '咲き乱れ、撃ち上がれ',     maxLaunch: 26, gen: { worldH: 4200, seed: 70, gapBase: 155, gapVar: 46, meander: 110, yStep: 70, nubCount: 6, hazardCount: 5, dangoCount: 12, bouncyCount: 9, sentryCount: 0, cloakCount: 0, gateHalf: 54, bumperMove: 110, catapultCount: 8, boostCount: 4 } }, // 派手フィナーレ：長い(4200px)・射出花8＋バンパー10＋気流4の超高密度連鎖・トゲ5・門最狭54＋頂上バンパー大往復。気流は“空きレーンに置く細い壁ぎわ柱”で挟まり源を作らない（cave.js）。最短≈14（BFS・カタパルト無し／💧12で回復）。レスキュー発動率0.3%＝ほぼ詰まらない
-    { code: '9-1', world: 9, name: '無音',     sub: '射抜いて、上のリングへ',   maxLaunch: 18, gen: { shootout: true, seed: 91, boxCount: 6, boxSpacing: 320, hoopRise: 110, hoopGap: 44, hoopRimR: 11, boundMin: 80, boundMax: 400, goalMove: 95, goalSpeed: 0.8, goalGap: 52 } }, // ★北極星その2＝精度の“ぱしゅっ”（フリースロー・タワー）：壁なし。タイトな輪を真上へ射抜くと“パシュッ”と上のフープエリアへワープ→繰り返して登る。外すとリムに弾かれ落ちて同じパッドに戻る（境界で取りこぼし無し）。最上段は左右にゆっくり動く輪＝ゴール（リードして射抜く）。spacing600>最大到達高＝必ず輪でしか上がれない＝壁登りで迂回できない（輪に意味が生まれる）。ワープごとにチェックポイント更新＝回数ぎれでもタワーを最初からやり直さない
+    { code: '9-1', world: 9, name: '無音',     sub: '射抜いて、上のリングへ',   maxLaunch: 18, gen: { shootout: true, seed: 91, boxCount: 6, boxSpacing: 320, hoopRise: 95, hoopGap: 38, hoopRimR: 10, hoopOffset: 110, boundMin: 60, boundMax: 420, goalMove: 100, goalSpeed: 0.8, goalGap: 46 } }, // ★北極星その2＝精度の“ぱしゅっ”（フリースロー・タワー）：壁なし。タイトな輪を真上へ射抜くと“パシュッ”と上のフープエリアへワープ→繰り返して登る。外すとリムに弾かれ落ちて同じパッドに戻る（境界で取りこぼし無し）。最上段は左右にゆっくり動く輪＝ゴール（リードして射抜く）。spacing600>最大到達高＝必ず輪でしか上がれない＝壁登りで迂回できない（輪に意味が生まれる）。ワープごとにチェックポイント更新＝回数ぎれでもタワーを最初からやり直さない
   ];
 
   // ---- 状態 ----
@@ -430,6 +430,15 @@
           blob.vx -= (1 + e) * vn * rrx; blob.vy -= (1 + e) * vn * rry;
           swishChain = 0; o.flash = Math.max(o.flash, 0.4); o.cool = 6;
           sfx.clank(); addTrauma(0.12);
+        } else if (sPrev > 0 && sCur <= 0) {   // 下からは入れない：開口を“逆向き(下→上)”に通ろうとしたら弾き返す（リム面は下からsolid＝バスケ同様、上からしか落ちない）
+          const f = sPrev / (sPrev - sCur);
+          const cxp = blob.px + (blob.x - blob.px) * f, cyp = blob.py + (blob.y - blob.py) * f;
+          if (Math.abs((cxp - o.x) * ux + (cyp - o.y) * uy) < o.gap) {
+            blob.x += nx * (R - sCur); blob.y += ny * (R - sCur);   // 開口の手前（入る側の反対）へ押し戻す
+            const vn = blob.vx * nx + blob.vy * ny;
+            if (vn < 0) { blob.vx -= 1.45 * vn * nx; blob.vy -= 1.45 * vn * ny; }   // e=0.45で弾き返す
+            o.flash = Math.max(o.flash, 0.22); sfx.clank();
+          }
         }
       }
 

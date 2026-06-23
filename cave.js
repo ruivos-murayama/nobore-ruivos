@@ -133,11 +133,12 @@
   //  縦の間隔(spacing)＞最大到達高＝飛んで隣のパッドに乗れない＝必ず輪でしか上がれない（＝輪に意味が生まれる／壁登りで迂回できない）。
   function buildShootout(p, COL) {
     const boxes = Math.max(2, p.boxCount || 6);
-    const spacing = p.boxSpacing || 320;        // 縦の間隔（>最大到達高≈131px＝必ずワープでしか上がれない／壁登り迂回不可）
-    const rise = p.hoopRise || 110;             // パッド→フープの高さ（全力でぐんと昇り抜ける＝通過時≈866px/s上向き）
-    const gap = p.hoopGap || 44;                // 開口の半幅（タイト＝RUIVOSがピッタリ／角度窓≈±5°）
-    const rimR = p.hoopRimR || 11;
-    const xMin = p.boundMin || 80, xMax = p.boundMax || (COL - 80), cx = COL / 2;
+    const spacing = p.boxSpacing || 320;        // 縦の間隔（>最大到達高≈210px＝必ずワープでしか上がれない／壁登り迂回不可）
+    const rise = p.hoopRise || 95;              // パッド→フープの高さ（低め＝弧の山が越えて“上から落とし込める”）
+    const gap = p.hoopGap || 38;                // 開口の半幅（タイト＝バスケのリム）
+    const rimR = p.hoopRimR || 10;
+    const offset = p.hoopOffset || 110;         // フープを左右に振るオフセット（弧で山越え→上から入れる。真上だとドロップインできない）
+    const xMin = p.boundMin || 60, xMax = p.boundMax || (COL - 60), cx = COL / 2;
     const padTopMargin = p.topMargin || 220;
     const padY0 = rise + padTopMargin + (boxes - 1) * spacing;   // 最下段パッドのy（pad上面）
     const H = padY0 + 280;
@@ -152,8 +153,10 @@
         { x: cx - padHalf, y: padY + 32 },
       ]);
       const isGoal = (i === boxes - 1);
-      const hp = { x: cx, y: padY - rise, ang: -Math.PI / 2, gap, rimR };
-      if (isGoal) { hp.goal = true; hp.gap = p.goalGap || (gap + 6); hp.move = p.goalMove || 95; hp.mspeed = p.goalSpeed || 0.8; hp.mphase = 0; }
+      const side = (i % 2 === 0) ? 1 : -1;   // 左右交互＝弧のジグザグ
+      const hx = isGoal ? cx : clampC(cx + side * offset, xMin + gap + 26, xMax - gap - 26);
+      const hp = { x: hx, y: padY - rise, ang: Math.PI / 2, gap, rimR };   // ang=+90°＝軸が下向き＝“上から下へ落とし込む”のみ成立（下からは入れない）
+      if (isGoal) { hp.goal = true; hp.gap = p.goalGap || (gap + 8); hp.move = p.goalMove || 100; hp.mspeed = p.goalSpeed || 0.8; hp.mphase = 0; }
       else hp.warpY = padY0 - (i + 1) * spacing;   // 次パッドのy（ワープ先）
       hoops.push(hp);
     }
