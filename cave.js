@@ -125,7 +125,7 @@
     const start = { x: centerX(sy) - halfGap(sy) + (R - 3), y: sy };
     const goal = { x: cx0, y: bot - 8 };
 
-    return { walls, hazards, bouncy: [], boosts: [], sentries: [], cloaks: [], movers: [], platforms: [], slipWalls, dango, start, goal, worldH: H, descent: true };
+    return { walls, hazards, bouncy: [], boosts: [], sentries: [], cloaks: [], movers: [], platforms: [], slipWalls, dango, hoops: [], start, goal, worldH: H, descent: true };
   }
 
   // --- 洞窟生成 ---
@@ -313,6 +313,22 @@
       if (placed) boosts.push(placed);
     }
 
+    // ---- フープ（輪）：中央の開けた空間に“上向きの輪”を段違いに吊るす。かすらず中央を射抜く＝スウィッシュ ----
+    //  左右壁の登坂ルートは常に確保（輪は中央寄り・リム支柱は小さい）＝詰み防止（カタパルトと同じく到達には必須でない／BFSソルバは無視）。
+    //  左右へ交互に少しずらして“弧で縫う”リズムを作る。すべて真上(-90°)＝「上へ射抜く」の単純で気持ちいい狙い。
+    const hoops = [];
+    const hoopCount = p.hoopCount || 0;
+    const hgGap = p.hoopGap || 0;     // 0＝実行時に DESIGN.gimmick.hoopGap を使う（game.js 側で解決）
+    const hgRim = p.hoopRimR || 0;
+    for (let i = 0; i < hoopCount; i++) {
+      const yy = top + 380 + ((i + 0.5) / Math.max(1, hoopCount)) * (bot - top - 760);
+      const side = (i % 2 ? 1 : -1);
+      const off = side * Math.min(64, halfGap(yy) * 0.32);   // 中央から左右へ少しずらす＝弧で縫うリズム
+      const margin = (hgGap || 78) + 56;                     // 輪が壁に埋まらない余白
+      const cx = clampC(centerX(yy) + off, margin, COL - margin);
+      hoops.push({ x: cx, y: yy, ang: -Math.PI / 2, gap: hgGap, rimR: hgRim });
+    }
+
     // 見張り（固定の目／首振りサーチライト）：壁際に設置しコリドー内側＋上下に傾けて視線を振る。
     //  幾何配置のみ生成（range/half/振れ幅/速さは DESIGN.stealth で実行時に適用＝単一の真実）。
     const sentries = [];
@@ -428,7 +444,7 @@
       return true;
     });
 
-    return { walls, hazards, bouncy, boosts: boostsSafe, sentries, cloaks, movers, platforms, slipWalls, dango, catapults, start, goal, worldH: H };
+    return { walls, hazards, bouncy, boosts: boostsSafe, sentries, cloaks, movers, platforms, slipWalls, dango, catapults, hoops, start, goal, worldH: H };
   }
 
   const CAVE = { buildCave, circlePoly, pointInPoly, mulberry32, segSeg, segPoly };

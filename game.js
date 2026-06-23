@@ -50,6 +50,7 @@
     { n: 6, name: '岐路の大坑' },
     { n: 7, name: '氷瀑' },
     { n: 8, name: '歓喜泉' },
+    { n: 9, name: '月輪' },
   ];
   // ---- ステージ（cave.js が形を生成。配色は design の stages・並びは一致）----
   //  code=「章-番」。maxLaunch＝飛ばし回数の上限（💧1個でRU.launchPerDango回 回復）。
@@ -70,6 +71,7 @@
     { code: '8-1', world: 8, name: '跳躍祭',     sub: 'ただ、跳ねるだけ',       maxLaunch: 30, gen: { worldH: 2400, seed: 33, gapBase: 170, gapVar: 38, meander: 80, yStep: 72, nubCount: 3, hazardCount: 0, dangoCount: 9, bouncyCount: 5, sentryCount: 0, cloakCount: 0, gateHalf: 72, bumperMove: 0, catapultCount: 4, boostCount: 0 } }, // ★北極星ステージ：危険・ステルス0／カタパルト(射出花)＋バンパーで“弾けて跳ねる”連鎖だけを純粋に。広い門・潤沢な回数＝縛りで急かさない。最短≈8。※気流(boost)は外した＝気流柱の縦ホバー＆気流×バンパー挟まりのソフトロックを根絶（保険に失速レスキューもエンジン側に常備）
     { code: '8-2', world: 8, name: '乱れ咲き',   sub: '射出花を乗り継いで',     maxLaunch: 22, gen: { worldH: 3000, seed: 19, gapBase: 150, gapVar: 44, meander: 100, yStep: 70, nubCount: 5, hazardCount: 4, dangoCount: 10, bouncyCount: 5, sentryCount: 0, cloakCount: 0, gateHalf: 56, bumperMove: 90, catapultCount: 6, boostCount: 0 } }, // 北極星テイストのまま難度↑：同じ“弾けて跳ねる”を高く長く狭く。射出花6＋バンパー6の長い連鎖／少量トゲで雑な弧を罰する／門狭め＋頂上バンパー往復／回数を締めて連鎖と💧回収を要求。最短≈10（BFS・カタパルト無し／💧10で最大+10回復の安全弁）。※バンパーは密集による挟まり多発を避け5に（保険に失速レスキュー常備）
     { code: '8-3', world: 8, name: '百花繚乱', sub: '咲き乱れ、撃ち上がれ',     maxLaunch: 26, gen: { worldH: 4200, seed: 70, gapBase: 155, gapVar: 46, meander: 110, yStep: 70, nubCount: 6, hazardCount: 5, dangoCount: 12, bouncyCount: 9, sentryCount: 0, cloakCount: 0, gateHalf: 54, bumperMove: 110, catapultCount: 8, boostCount: 4 } }, // 派手フィナーレ：長い(4200px)・射出花8＋バンパー10＋気流4の超高密度連鎖・トゲ5・門最狭54＋頂上バンパー大往復。気流は“空きレーンに置く細い壁ぎわ柱”で挟まり源を作らない（cave.js）。最短≈14（BFS・カタパルト無し／💧12で回復）。レスキュー発動率0.3%＝ほぼ詰まらない
+    { code: '9-1', world: 9, name: '無音',     sub: 'リングを鳴らさず、射抜く', maxLaunch: 30, gen: { worldH: 2600, seed: 91, gapBase: 166, gapVar: 40, meander: 92, yStep: 74, nubCount: 4, hazardCount: 0, dangoCount: 6, bouncyCount: 0, sentryCount: 0, cloakCount: 0, gateHalf: 70, bumperMove: 0, hoopCount: 6 } }, // ★北極星その2＝“ぱしゅっ”の精度快感：危険0・開けたコリドー(gapBase166)に上向きの輪6を段違い。かすらず中央を射抜く＝スウィッシュ（回数回復＋大演出＋連鎖）。リムに触れると弾かれて台無し。輪は中央・左右壁は足場(nub4)で素通しで登れる＝到達には必須でない（貪欲クライマーWIN23手＝詰み無し）。広い門・潤沢な回数で急かさず“狙って決める”に集中
   ];
 
   // ---- 状態 ----
@@ -88,6 +90,7 @@
   let winning = false, winT = 0, winFlash = 0, winSpark = 0, winRings = [], winGX = 0, winGY = 0, winHold = 0;  // 到達演出
   let combo = 0, texts = [], boostT = 0, bumpChain = 0, freeze = 0, popFlash = 0;
   let bestY = 1e9, stallT = 0;   // 失速レスキュー：最高到達(最小y)と、それが更新されない経過時間
+  let swishChain = 0;            // フープ：連続スウィッシュ数（かすらず射抜く streak。リムかすり/被弾で途切れる）
   let alert = 0, simTime = 0, alarmPing = 0;   // ステルス：発見メーター / 首振りの時刻 / 警告音タイマー
   let cloakT = 0;                              // 隠れ蓑：残り透明時間
   const aim = { active: false, sx: 0, sy: 0, cx: 0, cy: 0 };
@@ -108,6 +111,9 @@
     launch: (p) => beep(420 + p * 260, 0.16, 'triangle', 0.22, 180),
     land: (p) => { beep(520 + p * 300, 0.05, 'square', 0.10 + p * 0.08); beep(150, 0.18, 'sine', 0.14 + p * 0.12, 70); },
     bounce: (n = 0) => beep(300 + n * GM.bumperChainPitch * 0.5, 0.16, 'sine', 0.2, 720 + n * GM.bumperChainPitch),
+    swish: (n = 0) => { beep(1500 + Math.min(n, 6) * GM.swishChainPitch, 0.06, 'sine', 0.13, 560); beep(2600, 0.04, 'triangle', 0.05, 3400); setTimeout(() => beep(420, 0.10, 'sine', 0.10, 300), 42); },  // 高→低の“ぱしゅっ”＋鋭いチク＋ネットの弾き
+    rimIn: () => { beep(720, 0.06, 'sine', 0.10, 420); setTimeout(() => beep(320, 0.10, 'sine', 0.08, 200), 40); },   // リムを舐めて“イン”（控えめ）
+    clank: () => beep(180, 0.10, 'square', 0.14, 90),   // リムに弾かれ“カチッ”
     pickup: () => { beep(880, 0.08, 'square', 0.12); setTimeout(() => beep(1320, 0.1, 'square', 0.12), 70); },
     death: () => beep(160, 0.35, 'sawtooth', 0.25, 50),
     clear: () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.2, 'triangle', 0.18), i * 100)),
@@ -121,6 +127,7 @@
     level.walls = g.walls; level.hazards = g.hazards; level.bouncy = g.bouncy; level.boosts = g.boosts; level.sentries = g.sentries; level.movers = g.movers || [];
     level.platforms = g.platforms || []; level.slipWalls = g.slipWalls || [];
     level.catapults = g.catapults ? g.catapults.map(c => ({ x: c.x, y: c.y, r: c.r, ang: c.ang, power: c.power, cool: 0 })) : [];
+    level.hoops = g.hoops ? g.hoops.map(o => ({ x: o.x, y: o.y, ang: o.ang, gap: o.gap || GM.hoopGap, rimR: o.rimR || GM.hoopRimR, cool: 0, flash: 0 })) : [];
     level.cloaks = g.cloaks ? g.cloaks.map(c => ({ x: c.x, y: c.y, used: false })) : [];
     level.dango = g.dango.map(d => ({ x: d.x, y: d.y, got: false }));
     level.start = g.start; level.goal = g.goal; level.worldH = g.worldH;
@@ -139,8 +146,10 @@
     def.ang = 0; def.sx = 1; def.sy = 1; def.vsx = 0; def.vsy = 0; def.offx = 0; def.offy = 0;
     eyes.wide = 0; aim.active = false; alive = true; timeScale = 1; timeScaleTarget = 1; combo = 0; bumpChain = 0; freeze = 0; popFlash = 0;
     bestY = blob.y; stallT = 0;   // 失速レスキューの基準をリセット
+    swishChain = 0;               // スウィッシュ連鎖もリセット
     alert = 0; alarmPing = 0; cloakT = 0;   // simTime は連続させる（首振りは止めない）
     if (level && level.catapults) for (const c of level.catapults) c.cool = 0;   // 射出花のクールダウンを初期化
+    if (level && level.hoops) for (const o of level.hoops) { o.cool = 0; o.flash = 0; }   // フープの判定クールダウン/点滅をリセット
     launches = level ? level.maxLaunch : 0; outMsg = 0;   // 飛ばし回数は毎リスポーン満タンに戻す
     floorY = (level && level.rise) ? level.start.y + 170 : 1e9;            // 水面は毎リスポーンで下端へリセット
     floorVel = level ? level.rise : 0;                                     // 上昇速度も初速へリセット（加速し直す）
@@ -164,7 +173,7 @@
     alive = false; deathT = 0.32; flash = 1; eyes.wide = 1; tries++; totalTries++;
     addTrauma(0.7);
     for (let i = 0; i < D.particles.deathCount; i++) { const a = rand(0, 6.28), s = rand(60, 360); particles.push({ x: blob.x, y: blob.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color: i % 2 ? D.danger : level.palette.blob, size: rand(4, 9) }); }
-    combo = 0; bumpChain = 0; sfx.death(); vibe(D.haptics.death); updateHUD();
+    combo = 0; bumpChain = 0; swishChain = 0; sfx.death(); vibe(D.haptics.death); updateHUD();
   }
   function caught() {  // 見張りに発見された＝負け（専用のアラーム付き）
     if (!alive) return;
@@ -203,7 +212,7 @@
     if (winning) return;
     winning = true; winT = 0; winFlash = 0; winSpark = 0; winRings = []; winHold = 0;
     winGX = level.goal.x; winGY = level.goal.y;
-    aim.active = false; timeScaleTarget = 0.3; eyes.wide = 1; combo = 0; bumpChain = 0;
+    aim.active = false; timeScaleTarget = 0.3; eyes.wide = 1; combo = 0; bumpChain = 0; swishChain = 0;
     const hudEl = document.getElementById('hud'); if (hudEl) hudEl.classList.add('hidden');  // 演出中はHUDを隠す
     beep(660, 0.14, 'sine', 0.16, 1240);   // 吸い込みの予兆
   }
@@ -362,6 +371,57 @@
       for (const hz of level.hazards) if (CAVE.circlePoly(blob.x, blob.y, R, hz)) { die(); return; }
       if (blob.y > level.worldH + 250) { die(); return; }
       if (len(blob.x - level.goal.x, blob.y - level.goal.y) < R + P.goalRadius) { winStart(); return; }
+
+      // ---- フープ（輪）：かすらず中央を順方向に射抜く＝スウィッシュ（回数回復＋大演出＋連鎖）。リムに触れると弾かれて台無し（カチッ）----
+      //  弾道セグメント(px,py→x,y)で開口面の“順方向の横切り”を厳密判定。テレポート系(バンパー/カタパルト)より前に置く＝純弾道で評価。
+      if (!trapped && level.hoops.length) for (const o of level.hoops) {
+        if (o.cool > 0) o.cool--;
+        const nx = Math.cos(o.ang), ny = Math.sin(o.ang);   // 射抜く軸（順方向）
+        const ux = -ny, uy = nx;                            // 開口に沿う方向
+        // 1) 純弾道での順方向の横切り
+        const sPrev = (blob.px - o.x) * nx + (blob.py - o.y) * ny;
+        const sCur  = (blob.x - o.x) * nx + (blob.y - o.y) * ny;
+        let through = false;
+        if (sPrev < 0 && sCur >= 0 && (blob.vx * nx + blob.vy * ny) > 0) {
+          const f = sPrev / (sPrev - sCur);
+          const cxp = blob.px + (blob.x - blob.px) * f, cyp = blob.py + (blob.y - blob.py) * f;
+          if (Math.abs((cxp - o.x) * ux + (cyp - o.y) * uy) < o.gap) through = true;   // 開口の中を通った
+        }
+        // 2) リム支柱（両端の小円）への接触＝かすり
+        let rattled = false, hx = 0, hy = 0;
+        for (const sgn of [-1, 1]) {
+          const ox = o.x + ux * sgn * o.gap, oy = o.y + uy * sgn * o.gap;
+          const ddx = blob.x - ox, ddy = blob.y - oy, rr = R + o.rimR;
+          if (ddx * ddx + ddy * ddy < rr * rr) { rattled = true; hx = ox; hy = oy; }
+        }
+        // 3) 判定
+        if (o.cool === 0 && through) {
+          o.cool = 18; o.flash = 1;
+          if (!rattled) {   // スウィッシュ（かすらず通過）
+            swishChain++;
+            launches += GM.swishRefund; updateHUD();
+            impulseSquash(o.ang, 1.5, 1 / 1.5);
+            addTrauma(0.16 + Math.min(swishChain, 8) * 0.03); freeze = Math.max(freeze, 2);
+            popFlash = Math.min(0.5, 0.2 + swishChain * 0.05);
+            sfx.swish(swishChain - 1); vibe(D.haptics.land);
+            burstRing(o.x, o.y, level.palette.accent, 14 + Math.min(swishChain, 10) * 3);
+            for (let k = 0; k < 10; k++) { const a = o.ang + rand(-0.5, 0.5), s = rand(160, 320); particles.push({ x: o.x, y: o.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color: k % 2 ? '#ffffff' : level.palette.accent, size: rand(2, 5) }); }
+            texts.push({ x: o.x, y: o.y - 30, txt: swishChain >= 2 ? ('スウィッシュ ×' + swishChain) : 'スウィッシュ！', life: 1.1, good: true });
+          } else {          // リムを舐めて“イン”（通ったが回復なし／連鎖は途切れる）
+            swishChain = 0;
+            addTrauma(0.1); freeze = Math.max(freeze, 1);
+            sfx.rimIn(); burstRing(o.x, o.y, level.palette.accent, 8);
+            texts.push({ x: o.x, y: o.y - 26, txt: 'イン', life: 0.9, good: true });
+          }
+        } else if (rattled && o.cool === 0) {   // リムに弾かれた（通らず）＝カチッ・連鎖リセット
+          const dx = blob.x - hx, dy = blob.y - hy, d = len(dx, dy) || 1, rrx = dx / d, rry = dy / d, rr = R + o.rimR;
+          blob.x = hx + rrx * rr; blob.y = hy + rry * rr;
+          const vn = blob.vx * rrx + blob.vy * rry, e = GM.hoopRimRestitution;
+          blob.vx -= (1 + e) * vn * rrx; blob.vy -= (1 + e) * vn * rry;
+          swishChain = 0; o.flash = Math.max(o.flash, 0.4); o.cool = 6;
+          sfx.clank(); addTrauma(0.12);
+        }
+      }
 
       if (!trapped) for (const b of level.bouncy) {
         const dx = blob.x - b.x, dy = blob.y - b.y, rr = R + b.r;
@@ -568,7 +628,7 @@
     ctx.globalAlpha = 1;
 
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, COL, level.worldH); ctx.clip();
-    drawSentryCones(); drawCave(); drawBoosts(); drawSlipWalls(); drawPlatforms(); drawBouncy(); drawCatapults(); drawHazards(); drawMovers(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes(); drawRiseFloor();
+    drawSentryCones(); drawCave(); drawBoosts(); drawSlipWalls(); drawPlatforms(); drawBouncy(); drawCatapults(); drawHoops(); drawHazards(); drawMovers(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes(); drawRiseFloor();
     let predicted = null;
     if (gameState === 'play' && aim.active) { const a = aimVel(); const tr = simTrajectory(a.vx, a.vy); predicted = tr.land; drawTrajectory(tr, a.charge); }
     if (winning) drawWinRings();
@@ -724,6 +784,42 @@
       ctx.fillStyle = shade(level.palette.bg, 0.45); ctx.beginPath(); ctx.arc(0, 0, c.r * 0.62, 0, 6.28); ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.moveTo(0, -c.r * 0.66); ctx.lineTo(c.r * 0.42, c.r * 0.34); ctx.lineTo(-c.r * 0.42, c.r * 0.34); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
+  function drawHoops() {  // フープ（輪）：上向きの輪＋ネット＋発光リム。中央のチャンネルを狙う“的”
+    if (!level.hoops || !level.hoops.length) return;
+    const tm = performance.now() / 1000;
+    for (const o of level.hoops) {
+      const flash = o.flash || 0, gap = o.gap, rimR = o.rimR;
+      ctx.save();
+      ctx.translate(o.x, o.y); ctx.rotate(o.ang + Math.PI / 2);   // ローカル: 上(-y)＝射抜く方向
+      // 中央チャンネルの誘導ハロー（狙う場所を光らせる）
+      const halo = ctx.createRadialGradient(0, 0, 2, 0, 0, gap * 1.5);
+      halo.addColorStop(0, hexA(level.palette.accent, 0.16 + flash * 0.5));
+      halo.addColorStop(1, hexA(level.palette.accent, 0));
+      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(0, 0, gap * 1.5, 0, 6.28); ctx.fill();
+      // ネット（射抜く側＝ローカル-yへ垂れる弦。射抜くと吹き上がって靡く）
+      const strands = 5, reach = 24 + flash * 26;
+      ctx.strokeStyle = hexA('#ffffff', 0.42 + flash * 0.5); ctx.lineWidth = 2; ctx.lineCap = 'round';
+      for (let s = 0; s < strands; s++) {
+        const lx = -gap + (s / (strands - 1)) * (2 * gap);
+        const wig = Math.sin(tm * 3 + s * 1.3) * 3 * (1 + flash * 2);
+        ctx.beginPath(); ctx.moveTo(lx, 0); ctx.quadraticCurveTo(lx * 0.5 + wig, -reach * 0.6, wig * 0.6, -reach); ctx.stroke();
+      }
+      // 前リム（開口を渡すバー）＋発光する両端の支柱（ここに触れると弾かれる）
+      ctx.strokeStyle = hexA(level.palette.accent, 0.85); ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-gap, 0); ctx.lineTo(gap, 0); ctx.stroke();
+      ctx.shadowColor = level.palette.accent; ctx.shadowBlur = 16 + flash * 22;
+      ctx.fillStyle = level.palette.accent;
+      for (const sgn of [-1, 1]) { ctx.beginPath(); ctx.arc(sgn * gap, 0, rimR * (1 + flash * 0.3), 0, 6.28); ctx.fill(); }
+      ctx.fillStyle = '#ffffff';
+      for (const sgn of [-1, 1]) { ctx.beginPath(); ctx.arc(sgn * gap, 0, rimR * 0.45, 0, 6.28); ctx.fill(); }
+      ctx.shadowBlur = 0;
+      // 射抜く向きのヒント（淡いシェブロン。射抜くと上へ跳ねる）
+      ctx.strokeStyle = hexA(level.palette.accent, 0.35 + flash * 0.5); ctx.lineWidth = 3;
+      const cy = -gap * 0.5 - 6 - flash * 10;
+      ctx.beginPath(); ctx.moveTo(-10, cy + 8); ctx.lineTo(0, cy); ctx.lineTo(10, cy + 8); ctx.stroke();
       ctx.restore();
     }
   }
@@ -1030,6 +1126,7 @@
     if (trauma > 0) trauma = Math.max(0, trauma - dt / D.shake.decay);
     if (flash > 0) flash = Math.max(0, flash - dt / 0.25);
     if (popFlash > 0) popFlash = Math.max(0, popFlash - dt / 0.22);
+    if (level && level.hoops) for (const o of level.hoops) if (o.flash > 0) o.flash = Math.max(0, o.flash - dt / 0.45);   // フープの射抜き点滅の減衰
     if (outMsg > 0) outMsg = Math.max(0, outMsg - dt);
     if (gameState === 'play' && !alive) { deathT -= dt; if (deathT <= 0) spawn(); }
     if (gameState === 'map') updateMap(dt);

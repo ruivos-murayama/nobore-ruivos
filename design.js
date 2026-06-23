@@ -40,6 +40,12 @@ const DESIGN = {
     boostMaxSpeed: 2300,     // 気流での速度上限
     bumperChainPitch: 150,   // ★ 連続ヒットで上がる音程の刻み
     catapultPower: 1650,     // ★ カタパルト（射出花）の撃ち出し速度 px/s。入射を無視し固定ベクトルで“弾く”＝設計された大跳躍。gen.catapultPower で個別上書き可
+    // ---- フープ（輪）：かすらず中央を射抜く“ぱしゅっ”の的（バスケのスウィッシュ）----
+    hoopGap: 78,             // ★ 開口の半幅 px（リム支柱までの距離。小さいほどシビアに狙う）。gen.hoopGap で個別上書き可
+    hoopRimR: 12,            // リム支柱の半径 px（触れると弾かれる＝かすり）
+    hoopRimRestitution: 0.6, // リムの反発（<1で減衰＝無限バウンドしない）。当たると弾道が乱れて“カチッ”
+    swishRefund: 1,          // ★ きれいに射抜く（スウィッシュ）ごとに回復する飛ばし回数＝精度をフロー継続で報酬
+    swishChainPitch: 120,    // 連続スウィッシュで上がる音程＆演出の刻み
   },
   combo: { base: 720, pitchStep: 90 },  // コンボ雫：連続回収で音程上昇
 
@@ -119,6 +125,7 @@ const DESIGN = {
     { palette: { bg: '#1a0e2e', wall: '#352350', accent: '#ffd35e', blob: '#4de0ff' } }, // 8-1 跳躍祭（祝祭紫×黄金×水光blob＝弾けが映える祝祭色）
     { palette: { bg: '#1f0a2a', wall: '#3a1750', accent: '#ff6fae', blob: '#5ef0d0' } }, // 8-2 乱れ咲き（濃紫×薔薇金×新緑blob＝より熱い“咲き乱れ”の難所色）
     { palette: { bg: '#140738', wall: '#34208a', accent: '#ffce3a', blob: '#ff5ad6' } }, // 8-3 百花繚乱（深い王紫×菫青壁×黄金の花×紅紫blob＝最も派手な祝祭フィナーレ）
+    { palette: { bg: '#0a1024', wall: '#1a2350', accent: '#8fe9ff', blob: '#ff6a4d' } }, // 9-1 無音（静かな紺夜×石壁×月光の輪accent＝白ネットが映える清色／緋blobで一点の熱）
   ],
 
   // 目・影など共通
