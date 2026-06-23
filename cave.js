@@ -112,6 +112,22 @@
       hazards.push([{ x: ex, y: yy - 30 }, { x: ex + depth, y: yy }, { x: ex, y: yy + 30 }]);
     }
 
+    // 振り子氷塊（スイングブレード）：中央に吊した致死の氷塊が弧を描いて左右に振れる新ギミック。
+    //  支点はチャンネル中央。横振れ幅 reach はチャンネル幅の一部だけ＝壁際レーンは射程外（必ず逃げ場が残る＝詰み防止）。
+    //  トゲが壁を左右交互に塞いで横断を強いる → その横断時に振り子のタイミングを計る、が遊びの核（大滑降の“滑って避ける”の進化）。
+    const swings = [];
+    const swingCount = p.swingCount || 0;
+    const swingArc = p.swingArc || 0.95;            // 最大振れ角(rad)＝鉛直からの片振れ
+    const reachF = p.swingReach || 0.5;             // 横振れ幅＝halfGap×これ（<0.5＝壁際レーンを必ず安全に残す）
+    const sSpan = bot - top - 1100;
+    for (let i = 0; i < swingCount; i++) {
+      const py = top + 620 + (swingCount > 1 ? (i / (swingCount - 1)) * sSpan : 0);
+      const px = centerX(py);
+      const reach = halfGap(py) * reachF;            // 中央からの最大横振れ距離
+      const L = clampC(reach / Math.sin(swingArc), 90, 240);   // 振り子の長さ（横振れ幅から逆算）
+      swings.push({ x: px, y: py, L, arc: swingArc, w: (p.swingSpeed || 1.5) + rng() * 0.4, phase: rng() * 6.28, r: p.swingR || 22 });
+    }
+
     // 雫：中央付近をジグザグに（よいラインで拾える）
     const dango = [];
     const dangoCount = p.dangoCount || 0;
@@ -125,7 +141,7 @@
     const start = { x: centerX(sy) - halfGap(sy) + (R - 3), y: sy };
     const goal = { x: cx0, y: bot - 8 };
 
-    return { walls, hazards, bouncy: [], boosts: [], sentries: [], cloaks: [], movers: [], platforms: [], slipWalls, dango, hoops: [], start, goal, worldH: H, descent: true };
+    return { walls, hazards, bouncy: [], boosts: [], sentries: [], cloaks: [], movers: [], platforms: [], slipWalls, dango, hoops: [], swings, start, goal, worldH: H, descent: true };
   }
 
   // ---- フリースロー・タワー（shootout）：壁なし。タイトな輪を“パシュッ”と射抜くと上のエリアへワープ。最上段は左右に動く輪＝ゴール ----
@@ -167,10 +183,51 @@
     };
   }
 
+  // ---- 月の水鏡（lake）：壁なし。静かな水面を“水切り”で対岸の一段上のショアへ渡る。北極星その3＝静かな気持ちよさ ----
+  //  各段＝縦のショア(post／内側の縦面に貼り付く)＋その足元の水面(skip surface)＋壁ぎわの“月光の庇”(lip／非スティック反射スラブ＝ロブ封じ)。
+  //  ショアは左右交互。対岸(=次段)へ向け浅く速く撃つ→水面を“とぷん…”とスキップして渡り、一段上のショアに乗る。庇が“上から入る”を封じる＝水切りが唯一の進路（壁登り迂回不可）。
+  //  境界=左右の壁(反射・非スティック)＝取りこぼし無し。深く/遅く入ると沈む（game.js 側で静かにチェックポイント復帰）。
+  function buildLake(p, COL) {
+    const R = 24;
+    const tiers = Math.max(2, p.boxCount || 11);
+    const rise = p.tierRise || 58;                 // 段ごとの上り（小さいほどやさしい）
+    const lipGap = p.lipGap || 30;                 // ショアの上にかかる庇の高さ（ロブ封じ）
+    const lipW = p.lipW || 70;                      // 庇の張り出し幅
+    const xMin = p.boundMin || 60, xMax = p.boundMax || (COL - 60);
+    const postDepth = 14, postUp = 36, postDown = 70;
+    const Lx = xMin + postDepth + R, Rx = xMax - postDepth - R;   // 左右ショアのボール中心x
+    const topMargin = p.topMargin || 260;
+    const y0 = topMargin + (tiers - 1) * rise;      // 最下段ショアの水面y
+    const H = y0 + 320;
+    const walls = [], skips = [], lips = [];
+    for (let i = 0; i < tiers; i++) {
+      const onLeft = (i % 2 === 0);
+      const wy = y0 - i * rise;                      // この段の水面y（＝ショアの足元）
+      // ショア（縦のpost）：壁から内側へ少し出た縦板。内側の縦面に貼り付く（法線=内向き）。
+      const faceX = onLeft ? xMin + postDepth : xMax - postDepth;
+      const backX = onLeft ? xMin - 6 : xMax + 6;
+      walls.push([
+        { x: backX, y: wy - postUp }, { x: faceX, y: wy - postUp },
+        { x: faceX, y: wy + postDown }, { x: backX, y: wy + postDown },
+      ]);
+      // 月光の庇（lip）：このショアの壁側・少し上の非スティック反射スラブ。左右交互＝段が近接しても干渉しない。
+      lips.push(onLeft ? { x0: xMin, x1: xMin + lipW, y: wy - lipGap } : { x0: xMax - lipW, x1: xMax, y: wy - lipGap });
+      // 水面：最上段(=ゴール)を除く各段に1本。xMin..xMax を渡す。
+      if (i < tiers - 1) skips.push({ x0: xMin, x1: xMax, y: wy });
+    }
+    const topY = y0 - (tiers - 1) * rise;
+    const goalX = ((tiers - 1) % 2 === 0) ? Lx : Rx;
+    return {
+      walls, hazards: [], bouncy: [], boosts: [], sentries: [], cloaks: [], movers: [], platforms: [], slipWalls: [], dango: [], catapults: [], hoops: [],
+      skips, lips, start: { x: Lx, y: y0 }, goal: { x: goalX, y: topY }, worldH: H, lake: true, bounds: { xMin, xMax, e: 0.45 },
+    };
+  }
+
   // --- 洞窟生成 ---
   function buildCave(p, COL) {
     if (p.descent) return buildDescent(p, COL);
     if (p.shootout) return buildShootout(p, COL);
+    if (p.lake) return buildLake(p, COL);
     const rng = mulberry32(p.seed);
     const H = p.worldH, yStep = p.yStep || 80;
     const cx0 = COL / 2;
@@ -324,7 +381,10 @@
       let bi = 0, bd = Infinity;
       for (let k = 0; k < pts.length; k++) { const dd = Math.abs(pts[k].y - yy); if (dd < bd) { bd = dd; bi = k; } }
       const cxp = clampC(onLeft ? pts[bi].x + 42 : pts[bi].x - 42, 90, COL - 90);   // 壁の内側へ
-      const ang = -Math.PI / 2 + (onLeft ? 1 : -1) * 0.5;   // 真上(-90°)から反対の壁側へ±約29°＝ジグザグ
+      // ★扇花（おうぎばな）：射出角を catapultSpread だけ揺らす＝弧が散る“繚乱”。0で従来の固定±29°（lean=0.5rad）。
+      //  上半球(真上±)を保つよう lean は [0.25,0.75]rad にクランプ＝必ず上＋反対の壁側へ撃ち上がる（暴発しない）。
+      const lean = clampC(0.5 + (p.catapultSpread || 0) * (rng() - 0.5), 0.25, 0.75);
+      const ang = -Math.PI / 2 + (onLeft ? 1 : -1) * lean;   // 真上(-90°)から反対の壁側へ
       catapults.push({ x: cxp, y: pts[bi].y, r: 30, ang, power: p.catapultPower || 0 });
     }
 
@@ -365,8 +425,13 @@
       const side = (i % 2 ? 1 : -1);
       const off = side * Math.min(64, halfGap(yy) * 0.32);   // 中央から左右へ少しずらす＝弧で縫うリズム
       const margin = (hgGap || 78) + 56;                     // 輪が壁に埋まらない余白
-      const cx = clampC(centerX(yy) + off, margin, COL - margin);
-      hoops.push({ x: cx, y: yy, ang: -Math.PI / 2, gap: hgGap, rimR: hgRim });
+      // ★舞い輪（まいわ）：hoopMove>0 で左右にゆっくり漂う＝動く的（精度の祭り）。0なら静止（従来）。
+      //  漂い幅を確保するため中央寄りに最低 hoopMove/2 のインセットを取る＝壁際に寄った輪も必ず動ける。
+      const inset = p.hoopMove ? p.hoopMove * 0.5 : 0;
+      const cx = clampC(centerX(yy) + off, margin + inset, COL - margin - inset);
+      //  振幅は「壁／開口余白に埋まらない」よう左右の空きに収める。
+      const mvAmp = p.hoopMove ? Math.min(p.hoopMove, cx - margin, COL - margin - cx) : 0;
+      hoops.push({ x: cx, y: yy, ang: -Math.PI / 2, gap: hgGap, rimR: hgRim, move: mvAmp, mspeed: mvAmp ? (p.hoopMspeed || 0.7) : 0, mphase: rng() * 6.28 });
     }
 
     // 見張り（固定の目／首振りサーチライト）：壁際に設置しコリドー内側＋上下に傾けて視線を振る。
@@ -456,6 +521,7 @@
     //  外周の左右壁は不変＝必ず登れる（詰み防止）。島はそこへ「分岐と手数の差」を足すだけ。
     //  近道側＝気流で一気に上れる（少ない手数）／反対側＝普通の登り（手数多いが安全）。
     const forkCount = p.forkCount || 0;
+    const forkIslands = [];
     for (let i = 0; i < forkCount; i++) {
       const yc = top + 560 + ((i + 0.5) / Math.max(1, forkCount)) * (bot - top - 1120);
       const cxc = centerX(yc), hg = halfGap(yc);
@@ -473,6 +539,22 @@
       const side = (i % 2 === 0) ? 1 : -1;       // 近道の気流を置く側（左右交互）
       const bx = clampC(cxc + side * (pw / 2 + 46), 60, COL - 60);
       boosts.push({ x: bx - 44, y: yc - half - 150, w: 88, h: half * 2 + 280, dx: 0, dy: -1 });   // 島より上まで伸ばす＝一気に上れる近道
+      forkIslands.push({ cxc, yc, half, pw, side });
+    }
+
+    // 分岐の“反気流側”の通路を塞ぐバンパーは除去：気流側＝近道は跳ね返しの手応えを残しつつ、
+    //  反対側は素直に登れる通路にする（「どっち行ってもバウンドが邪魔して通れない」の解消）。
+    //  島の縦範囲内かつ反気流側エッジより外（＝その通路の中）に居るバンパーだけを落とす。
+    for (const is of forkIslands) {
+      const nonAir = -is.side;                       // 気流の無い側（+1=右 / -1=左）
+      const laneEdge = is.cxc + nonAir * (is.pw / 2);  // 島の反気流側エッジ
+      for (let k = bouncy.length - 1; k >= 0; k--) {
+        const b = bouncy[k];
+        if (b.summit) continue;
+        const inSpan = b.y > is.yc - is.half && b.y < is.yc + is.half;
+        const inLane = nonAir > 0 ? b.x > laneEdge : b.x < laneEdge;
+        if (inSpan && inLane) bouncy.splice(k, 1);
+      }
     }
 
     // 安全化（最終保険）：万一バンパー/カタパルトを“囲い込む”気流が残れば除外（島の近道気流など）（＝中心が柱の内側＝blobが開いた側へ抜けられず挟まる最悪形）。

@@ -51,6 +51,9 @@
     { n: 7, name: '氷瀑' },
     { n: 8, name: '歓喜泉' },
     { n: 9, name: '月輪' },
+    { n: 10, name: '月華' },
+    { n: 11, name: '水鏡' },
+    { n: 12, name: '奔流' },
   ];
   // ---- ステージ（cave.js が形を生成。配色は design の stages・並びは一致）----
   //  code=「章-番」。maxLaunch＝飛ばし回数の上限（💧1個でRU.launchPerDango回 回復）。
@@ -68,10 +71,14 @@
     { code: '5-1', world: 5, name: 'せまる水面', sub: 'せり上がる水から登りきれ', maxLaunch: 21, gen: { worldH: 2200, seed: 14, gapBase: 140, gapVar: 42, meander: 95, yStep: 72, nubCount: 6, hazardCount: 1, dangoCount: 6, bouncyCount: 1, sentryCount: 1, cloakCount: 0, gateHalf: 62, riseSpeed: 30, riseAccel: 14, riseMax: 135 } }, // 最短14・水攻め（初速ゆっくり→加速→上限135／急げば逃げ切れる）
     { code: '6-1', world: 6, name: '分かれ道',   sub: '道を選んで登りきれ',     maxLaunch: 60, gen: { worldH: 5600, seed: 8, gapBase: 165, gapVar: 40, meander: 120, yStep: 76, nubCount: 4, hazardCount: 2, dangoCount: 10, bouncyCount: 2, sentryCount: 1, cloakCount: 0, gateHalf: 64, forkCount: 6 } }, // 本道≈56手/近道≈32手（貪欲クライマー計測）・ルート分岐
     { code: '7-1', world: 7, name: '大滑降',     sub: '氷壁を滑り降りろ',       maxLaunch: 90, gen: { worldH: 18000, seed: 5, gapBase: 168, gapVar: 34, meander: 78, yStep: 70, hazardCount: 35, dangoCount: 30, descent: true, slipSpeed: 520 } }, // 滑降（上→下）・優しめ／爽快・5倍長（約18000px）
+    { code: '7-2', world: 7, name: '振り子瀑',   sub: '揺れる氷塊をかいくぐれ', maxLaunch: 64, gen: { worldH: 10000, seed: 7, gapBase: 180, gapVar: 24, meander: 68, yStep: 70, hazardCount: 26, dangoCount: 24, descent: true, slipSpeed: 555, swingCount: 8, swingArc: 0.95, swingSpeed: 1.65, swingR: 23, swingReach: 0.56 } }, // 大滑降の“進化盤”＝新ギミック「振り子氷塊」。中央に吊した致死の氷塊が弧で左右に振れる→壁際レーンは射程外で安全だがトゲが壁を左右交互に塞ぐ＝中央横断時に振り子のタイミングを計る。長い(10000px)・滑降やや高速555・トゲ26＋振り子8。難度ちょい上げ：reach0.56(氷塊が壁へ迫る＝中央回廊が狭い)・swingSpeed1.65(振り速い＝タイミングシビア)・回数64に締め。それでも“振り子と逆の壁”は常に射程外＝必ず逃げ場あり（詰み無し）
     { code: '8-1', world: 8, name: '跳躍祭',     sub: 'ただ、跳ねるだけ',       maxLaunch: 30, gen: { worldH: 2400, seed: 33, gapBase: 170, gapVar: 38, meander: 80, yStep: 72, nubCount: 3, hazardCount: 0, dangoCount: 9, bouncyCount: 5, sentryCount: 0, cloakCount: 0, gateHalf: 72, bumperMove: 0, catapultCount: 4, boostCount: 0 } }, // ★北極星ステージ：危険・ステルス0／カタパルト(射出花)＋バンパーで“弾けて跳ねる”連鎖だけを純粋に。広い門・潤沢な回数＝縛りで急かさない。最短≈8。※気流(boost)は外した＝気流柱の縦ホバー＆気流×バンパー挟まりのソフトロックを根絶（保険に失速レスキューもエンジン側に常備）
     { code: '8-2', world: 8, name: '乱れ咲き',   sub: '射出花を乗り継いで',     maxLaunch: 22, gen: { worldH: 3000, seed: 19, gapBase: 150, gapVar: 44, meander: 100, yStep: 70, nubCount: 5, hazardCount: 4, dangoCount: 10, bouncyCount: 5, sentryCount: 0, cloakCount: 0, gateHalf: 56, bumperMove: 90, catapultCount: 6, boostCount: 0 } }, // 北極星テイストのまま難度↑：同じ“弾けて跳ねる”を高く長く狭く。射出花6＋バンパー6の長い連鎖／少量トゲで雑な弧を罰する／門狭め＋頂上バンパー往復／回数を締めて連鎖と💧回収を要求。最短≈10（BFS・カタパルト無し／💧10で最大+10回復の安全弁）。※バンパーは密集による挟まり多発を避け5に（保険に失速レスキュー常備）
     { code: '8-3', world: 8, name: '百花繚乱', sub: '咲き乱れ、撃ち上がれ',     maxLaunch: 26, gen: { worldH: 4200, seed: 70, gapBase: 155, gapVar: 46, meander: 110, yStep: 70, nubCount: 6, hazardCount: 5, dangoCount: 12, bouncyCount: 9, sentryCount: 0, cloakCount: 0, gateHalf: 54, bumperMove: 110, catapultCount: 8, boostCount: 4 } }, // 派手フィナーレ：長い(4200px)・射出花8＋バンパー10＋気流4の超高密度連鎖・トゲ5・門最狭54＋頂上バンパー大往復。気流は“空きレーンに置く細い壁ぎわ柱”で挟まり源を作らない（cave.js）。最短≈14（BFS・カタパルト無し／💧12で回復）。レスキュー発動率0.3%＝ほぼ詰まらない
     { code: '9-1', world: 9, name: '無音',     sub: '射抜いて、上のリングへ',   maxLaunch: 18, gen: { shootout: true, seed: 91, boxCount: 6, boxSpacing: 320, hoopRise: 95, hoopGap: 38, hoopRimR: 10, hoopOffset: 110, boundMin: 60, boundMax: 420, goalMove: 100, goalSpeed: 0.8, goalGap: 46 } }, // ★北極星その2＝精度の“ぱしゅっ”（フリースロー・タワー）：壁なし。タイトな輪を真上へ射抜くと“パシュッ”と上のフープエリアへワープ→繰り返して登る。外すとリムに弾かれ落ちて同じパッドに戻る（境界で取りこぼし無し）。最上段は左右にゆっくり動く輪＝ゴール（リードして射抜く）。spacing600>最大到達高＝必ず輪でしか上がれない＝壁登りで迂回できない（輪に意味が生まれる）。ワープごとにチェックポイント更新＝回数ぎれでもタワーを最初からやり直さない
+    { code: '10-1', world: 10, name: '花輪繚乱', sub: '撃ち上げて、舞い輪を射抜く', maxLaunch: 28, gen: { worldH: 4600, seed: 222, gapBase: 156, gapVar: 46, meander: 112, yStep: 70, nubCount: 6, hazardCount: 5, dangoCount: 12, bouncyCount: 9, sentryCount: 0, cloakCount: 0, gateHalf: 52, bumperMove: 115, catapultCount: 8, catapultSpread: 0.4, boostCount: 4, hoopCount: 4, hoopGap: 46, hoopRimR: 10, hoopMove: 64, hoopMspeed: 0.65 } }, // 第10章 月華＝二つの北極星(8章の射出花/バンパー/気流＝祭り × 9章の輪＝精度)を交配した進化アンコール。百花繚乱の連鎖はそのままに【進化1=扇花】射出花の角度を±catapultSpreadだけ散らす＝弧が八方に咲く“繚乱”／【進化2=舞い輪】輪が左右にゆっくり漂う(hoopMove)動く的＝上へ射抜く(-90°)とスウィッシュで飛ばし回数を回復＝精度がフローを延ばす任意ボーナス（到達は壁＋バンパーで保証・輪は迂回可・BFSソルバは無視）。長い(4600px)・トゲ5・門最狭52＋頂上バンパー大往復。最短≈20（BFS・カタパルト/輪 無しの純壁登り／実際はカタパルト連鎖でずっと少なく済む・💧12＋スウィッシュで回復）。※末尾追加＝既存9面の進捗indexを保つ
+    { code: '11-1', world: 11, name: '凪', sub: '水を切って、月を渡る', maxLaunch: 18, gen: { lake: true, seed: 101, boxCount: 11, tierRise: 58, lipGap: 30, lipW: 70, boundMin: 60, boundMax: 420 } }, // ★北極星その3＝静かな気持ちよさ（第11章 水鏡）：壁なし・月の“水鏡”を「水切り」で渡る。各段＝対岸の一段上のショアへ、静かな水面を浅く速く擦って“とぷん…とぷん”と2〜3回スキップして渡る→次のショア（自動でチェックポイント前進＋静かに+1回復）。深く/遅く入ると弾かれず“ぽちゃん”と沈む＝チェックポイントから静かにやり直し（致死演出なし）。各ショアには壁ぎわの“月光の庇”（非スティック反射スラブ）＝上からロブして渡るのを封じる＝水切りが唯一の進路（壁登り迂回不可・9-1v1の轍を踏まない）。検証：通し11段クリア・ロブ迂回0・ソフトロック0（lake-tune5）。北極星その1(8章=弾けて跳ねる連鎖)・その2(9章=狙って射抜く精度)に対し“静かに水を切って渡る”第3の手触り
+    { code: '12-1', world: 12, name: '鉄砲水', sub: '射出花で水を振り切れ', maxLaunch: 26, gen: { worldH: 2700, seed: 12, gapBase: 158, gapVar: 42, meander: 95, yStep: 72, nubCount: 5, hazardCount: 3, dangoCount: 10, bouncyCount: 4, sentryCount: 0, cloakCount: 0, gateHalf: 62, bumperMove: 0, catapultCount: 5, boostCount: 0, riseSpeed: 32, riseAccel: 15, riseMax: 150 } }, // 第12章 奔流＝「迫る水面（加速床）×カタパルト（射出花）」の掛け合わせ。下から加速してせり上がる水を、射出花5＋バンパー4の連鎖で一気に駆け上がって振り切る爽快ステージ。水＝急かす圧／射出花＝逃げる快感。BFS壁登り最短16（カタパルト/水 無視）・加速水面 vs 競技的壁登りで finalGap≈200px逃げ切り＝カタパルト無しでも公平（射出花を使えば余裕大）。riseSpeed初速32→加速15→上限150（5-1より速い）。boostCount0でソフトロック源を作らない。💧10＋毎リスポーン満タンで水の圧を緩和
   ];
 
   // ---- 状態 ----
@@ -91,6 +98,7 @@
   let combo = 0, texts = [], boostT = 0, bumpChain = 0, freeze = 0, popFlash = 0;
   let bestY = 1e9, stallT = 0;   // 失速レスキュー：最高到達(最小y)と、それが更新されない経過時間
   let swishChain = 0;            // フープ：連続スウィッシュ数（かすらず射抜く streak。リムかすり/被弾で途切れる）
+  let skipChain = 0;            // 水切り：1回の飛行で連続スキップした数（“とぷん…とぷん”で音程↑）
   let alert = 0, simTime = 0, alarmPing = 0;   // ステルス：発見メーター / 首振りの時刻 / 警告音タイマー
   let cloakT = 0;                              // 隠れ蓑：残り透明時間
   const aim = { active: false, sx: 0, sy: 0, cx: 0, cy: 0 };
@@ -125,11 +133,15 @@
     levelIndex = i; level = LEVELS[i];
     const g = CAVE.buildCave(level.gen, COL);
     level.walls = g.walls; level.hazards = g.hazards; level.bouncy = g.bouncy; level.boosts = g.boosts; level.sentries = g.sentries; level.movers = g.movers || [];
-    level.platforms = g.platforms || []; level.slipWalls = g.slipWalls || [];
+    level.platforms = g.platforms || []; level.slipWalls = g.slipWalls || []; level.swings = g.swings || [];
     level.catapults = g.catapults ? g.catapults.map(c => ({ x: c.x, y: c.y, r: c.r, ang: c.ang, power: c.power, cool: 0 })) : [];
     level.hoops = g.hoops ? g.hoops.map(o => ({ x: o.x, y: o.y, ang: o.ang, gap: o.gap || GM.hoopGap, rimR: o.rimR || GM.hoopRimR, cool: 0, flash: 0, bx: o.x, warpY: (o.warpY != null ? o.warpY : null), goal: !!o.goal, move: o.move || 0, mspeed: o.mspeed || 0, mphase: o.mphase || 0 })) : [];
     level.shootout = !!g.shootout;        // フリースロー・タワー（壁なし・輪を射抜いて上へワープ）
     level.bounds = g.bounds || null;      // プレイ境界（左右で跳ね返す＝取りこぼし無し・貼り付かない）
+    level.lake = !!g.lake;                // 月の水鏡（壁なし・水面を“水切り”で渡る）
+    level.skips = g.skips ? g.skips.map(w => ({ x0: w.x0, x1: w.x1, y: w.y, cool: 0 })) : [];   // 水面（擦るとスキップ／深く入ると沈む）
+    level.lips = g.lips || [];            // 月光の庇（ロブ封じの非スティック反射スラブ）
+    level.skipRings = [];                 // 水紋（スキップ/沈み の波紋）
     level.cloaks = g.cloaks ? g.cloaks.map(c => ({ x: c.x, y: c.y, used: false })) : [];
     level.dango = g.dango.map(d => ({ x: d.x, y: d.y, got: false }));
     level.start = g.start; level.goal = g.goal; level.worldH = g.worldH;
@@ -162,6 +174,7 @@
     if (level && level.sentries) for (const s of level.sentries) s.hot = false;  // 見張りの警戒色をリセット
     if (level && level.descent) attachToSlip();   // 滑降：スタートで氷壁に貼り付かせ即・滑り出す
     if (level && level.shootout) { blob.y = level.start.y - R; blob.px = blob.x; blob.py = blob.y; blob.stuck = true; blob.nx = 0; blob.ny = -1; blob.vx = 0; blob.vy = 0; bestY = blob.y; stallT = 0; }   // フリースロー：パッド上面に立たせ即・狙える
+    if (level && level.lake) { blob.px = blob.x; blob.py = blob.y; blob.stuck = true; blob.nx = (level.start.x < COL / 2) ? 1 : -1; blob.ny = 0; blob.vx = 0; blob.vy = 0; bestY = blob.y; stallT = 0; skipChain = 0; }   // 水鏡：ショアの縦面に貼り付けて即・水切りを撃てる
     cam.y = clampCamY(blob.y); cam.vy.v = 0; cam.zoom = 1;
     updateHUD();   // リスポーン直後にジャンプ回数表示も満タンへ戻す（死亡時の数字のまま残らないように）
   }
@@ -355,6 +368,12 @@
       m.cx = m.x0 + m.ax * m.amp * s; m.cy = m.y0 + m.ay * m.amp * s;
       if (len(blob.x - m.cx, blob.y - m.cy) < R + m.r) { die(); return; }
     }
+    // 振り子氷塊：支点から吊した氷塊が弧を描いて左右に振れる。飛行中も滑走中も触れたら即ミス＝高速降下中に中央横断のタイミングを計る新ギミック
+    for (const sw of level.swings) {
+      const th = sw.arc * Math.sin(simTime * sw.w + sw.phase);
+      sw.bx = sw.x + sw.L * Math.sin(th); sw.by = sw.y + sw.L * Math.cos(th);
+      if (len(blob.x - sw.bx, blob.y - sw.by) < R + sw.r) { die(); return; }
+    }
     // 動く台：位置更新＋（乗っていれば）一緒に運ぶ
     for (const pl of level.platforms) { pl.pcx = pl.cx; pl.pcy = pl.cy; const s = Math.sin(simTime * pl.speed + pl.phase); pl.cx = pl.x0 + pl.ax * pl.amp * s; pl.cy = pl.y0 + pl.ay * pl.amp * s; }
     if (blob.stuck && blob.plat >= 0 && level.platforms[blob.plat]) { const pl = level.platforms[blob.plat]; blob.x += pl.cx - pl.pcx; blob.y += pl.cy - pl.pcy; }
@@ -374,6 +393,28 @@
       if (level.bounds) {   // プレイ境界：左右で跳ね返す（貼り付かない＝壁登り不可・取りこぼし無し）
         if (blob.x - R < level.bounds.xMin) { blob.x = level.bounds.xMin + R; if (blob.vx < 0) blob.vx = -blob.vx * level.bounds.e; }
         else if (blob.x + R > level.bounds.xMax) { blob.x = level.bounds.xMax - R; if (blob.vx > 0) blob.vx = -blob.vx * level.bounds.e; }
+      }
+
+      // ---- 月光の庇（lip）：壁ぎわの非スティック反射スラブ＝ロブ封じ（上からショアに入れない。低く擦って“下を潜る”水切りのみ）----
+      if (level.lips) for (const lp of level.lips) {
+        if (blob.x <= lp.x0 || blob.x >= lp.x1) continue;
+        if (Math.abs(blob.y - lp.y) < R) {
+          if (blob.py <= lp.y) { blob.y = lp.y - R; if (blob.vy > 0) blob.vy = -blob.vy * (GM.lakeLipBounce || 0.4); }   // 上から → 上へ弾く
+          else { blob.y = lp.y + R; if (blob.vy < 0) blob.vy = -blob.vy * (GM.lakeLipBounce || 0.4); }                   // 下から → 下へ弾く
+        }
+      }
+      // ---- 水切り（水面）：浅く速く擦ると“とぷん”と跳ねて渡る。深い/遅いと弾かず静かに沈む（チェックポイント復帰）----
+      //  純弾道で水面(py<y を跨ぐ下向き横切り)を判定。進入角が浅く・速ければスキップ（縦に跳ね返し＋月光のリフト＋横保持）。
+      if (level.skips) for (const w of level.skips) {
+        if (w.cool > 0) { w.cool--; continue; }
+        if (blob.x < w.x0 || blob.x > w.x1) continue;
+        if (blob.py < w.y && blob.y >= w.y && blob.vy > 0 && blob.ignoreT <= 0) {
+          const speed = len(blob.vx, blob.vy), ang = Math.atan2(blob.vy, Math.abs(blob.vx));
+          if (ang < GM.skipMaxAngle && speed > GM.skipMinSpeed) {
+            blob.y = w.y - 1; blob.vy = -(blob.vy * GM.skipRest + GM.skipLift); blob.vx *= GM.skipFric; w.cool = 2;
+            lakeSkip(blob.x, w.y);
+          } else { sink(w); return; }
+        }
       }
 
       for (const hz of level.hazards) if (CAVE.circlePoly(blob.x, blob.y, R, hz)) { die(); return; }
@@ -492,6 +533,7 @@
       if (!c) for (let k = 0; k < level.walls.length; k++) { const cc = CAVE.circlePoly(blob.x, blob.y, R, level.walls[k]); if (cc) { c = cc; break; } }
       if (c) { blob.x += c.nx * c.pen; blob.y += c.ny * c.pen; blob.nx = c.nx; blob.ny = c.ny; blob.slip = onSlip; }
       else { blob.stuck = false; blob.slip = false; blob.vx = blob.nx * 40; blob.vy = 90; blob.ignoreT = P.launchIgnoreSteps; bestY = blob.y; stallT = 0; }   // 板の下端で離脱→落下
+      for (const hz of level.hazards) if (CAVE.circlePoly(blob.x, blob.y, R, hz)) { die(); return; }   // 滑走中もトゲは刺さる（壁にへばりついて滑り続けると素通りするバグ修正＝跳んで避けさせる）
       const spray = level.descent ? 3 : (Math.random() < 0.3 ? 1 : 0);   // 滑降は氷しぶき多め＝スピード感
       for (let s = 0; s < spray; s++) particles.push({ x: blob.x - blob.nx * R + rand(-6, 6), y: blob.y - blob.ny * R, vx: blob.nx * rand(-40, 40), vy: level.descent ? rand(-120, -40) : 70, life: 1, color: Math.random() < 0.5 ? '#cfeaff' : '#ffffff', size: rand(2, 4) });   // 氷の粉（滑降は後方へ）
     }
@@ -543,7 +585,36 @@
     if (combo >= 3) beep(1200, 0.12, 'triangle', 0.16, 1700);  // コンボ締めの達成音
     if (bumpChain >= 3) beep(1000, 0.14, 'triangle', 0.18, 1500);  // バンパー連鎖の締め
     combo = 0; bumpChain = 0;
+    // 月の水鏡：一段上のショアに乗った＝静かなチェックポイント前進（＋少し回復）。最上段に乗れば月へ＝クリア。
+    if (level && level.lake) {
+      skipChain = 0;
+      if (blob.y <= level.goal.y + 10) { winStart(); return; }   // 最上段ショア＝月の出口
+      if (blob.y < level.start.y - 8) {   // 次のショアへ前進
+        level.start = { x: blob.x, y: blob.y };
+        launches = Math.min(level.maxLaunch, launches + (GM.skipRefund || 0));
+        burstRing(blob.x, blob.y - R, level.palette.accent, 10);
+        texts.push({ x: blob.x, y: blob.y - 34, txt: 'わたった', life: 0.9, good: true });
+        beep(880, 0.10, 'sine', 0.10, 1240); updateHUD();
+      }
+    }
     if (alive && launches <= 0) failNoMoves();   // 最後の1回を撃って出口でなく壁に着地＝回数ぎれ失敗
+  }
+  // 水切り：水面を“とぷん”とスキップ（波紋＋やわらかい音＋音程↑＋しずく）
+  function lakeSkip(x, y) {
+    skipChain++;
+    level.skipRings.push({ x, y, r: R * 0.5, life: 1, w: 2 });
+    for (let i = 0; i < 5; i++) { const a = rand(0, 6.28); particles.push({ x, y, vx: Math.cos(a) * rand(40, 120), vy: -Math.abs(Math.sin(a)) * rand(30, 100), life: 1, color: i % 2 ? '#dff1ff' : level.palette.accent, size: rand(2, 4) }); }
+    beep(440 + Math.min(skipChain, 8) * 80, 0.06, 'sine', 0.08, 320); beep(1700, 0.02, 'sine', 0.03, 2300);
+    impulseSquash(0, 1.22, 1 / 1.22); addTrauma(0.05); vibe(6);
+  }
+  // 水切り：深く/遅く入って“ぽちゃん”と沈む＝チェックポイントから静かにやり直し（致死演出なし・tries加算なし）
+  function sink(w) {
+    for (let i = 0; i < 16; i++) { const a = -Math.PI / 2 + rand(-1.1, 1.1), s = rand(40, 180); particles.push({ x: clamp(blob.x, w.x0, w.x1), y: w.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color: i % 2 ? '#bfe0ff' : level.palette.accent, size: rand(2, 6) }); }
+    level.skipRings.push({ x: blob.x, y: w.y, r: R, life: 1, w: 3 }, { x: blob.x, y: w.y, r: R * 1.7, life: 0.85, w: 2 });
+    beep(300, 0.18, 'sine', 0.13, 130); setTimeout(() => beep(200, 0.22, 'sine', 0.1, 100), 70);
+    texts.push({ x: clamp(blob.x, w.x0, w.x1), y: w.y - 22, txt: 'ぽちゃん', life: 0.9 });
+    vibe(10);
+    spawn();   // チェックポイント(level.start)から静かに復活
   }
 
   // ---- フリースロー・タワー：輪を綺麗に射抜いた → 上のパッドへワープ（次のフープエリアへ）----
@@ -622,7 +693,7 @@
     if (!aim.active) return; e.preventDefault(); aim.active = false; timeScaleTarget = 1;
     const a = aimVel(); if (a.pull < 6) return;
     if (launches <= 0) return;   // 念のため（通常はのこり0で着地した瞬間に失敗判定が入る）
-    blob.stuck = false; blob.plat = -1; blob.slip = false; blob.vx = a.vx; blob.vy = a.vy; blob.ignoreT = P.launchIgnoreSteps; bumpChain = 0;
+    blob.stuck = false; blob.plat = -1; blob.slip = false; blob.vx = a.vx; blob.vy = a.vy; blob.ignoreT = P.launchIgnoreSteps; bumpChain = 0; skipChain = 0;
     bestY = blob.y; stallT = 0;   // 新しい飛行＝失速基準をリセット
     launches--; updateHUD();     // 1回の飛ばしで1消費
     impulseSquash(Math.atan2(a.vy, a.vx), SQ.launchAlong, SQ.launchPerp);
@@ -662,7 +733,8 @@
 
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, COL, level.worldH); ctx.clip();
     if (level.shootout) { drawBounds(); drawPads(); drawHoops(); }
-    else { drawSentryCones(); drawCave(); drawBoosts(); drawSlipWalls(); drawPlatforms(); drawBouncy(); drawCatapults(); drawHoops(); drawHazards(); drawMovers(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes(); drawRiseFloor(); }
+    else if (level.lake) { drawBounds(); drawLakeShores(); drawLakeWater(); drawLakeLips(); drawLakeGoal(); }
+    else { drawSentryCones(); drawCave(); drawBoosts(); drawSlipWalls(); drawPlatforms(); drawBouncy(); drawCatapults(); drawHoops(); drawHazards(); drawMovers(); drawSwings(); drawGoal(); drawOrbs(); drawCloaks(); drawSentryEyes(); drawRiseFloor(); }
     let predicted = null;
     if (gameState === 'play' && aim.active) { const a = aimVel(); const tr = simTrajectory(a.vx, a.vy); predicted = tr.land; drawTrajectory(tr, a.charge); }
     if (winning) drawWinRings();
@@ -785,6 +857,23 @@
       ctx.restore();
     }
   }
+  function drawSwings() {  // 振り子氷塊（スイングブレード）：支点→氷の鎖→致死の氷塊。可動域の弧を淡く示す
+    if (!level.swings || !level.swings.length) return;
+    const t = performance.now() / 200;
+    for (const sw of level.swings) {
+      const bx = sw.bx != null ? sw.bx : sw.x, by = sw.by != null ? sw.by : sw.y + sw.L;
+      ctx.strokeStyle = hexA(D.danger, 0.13); ctx.lineWidth = 3; ctx.setLineDash([4, 9]);   // 可動域の弧
+      ctx.beginPath(); ctx.arc(sw.x, sw.y, sw.L, Math.PI / 2 - sw.arc, Math.PI / 2 + sw.arc); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(200,238,255,0.5)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(sw.x, sw.y); ctx.lineTo(bx, by); ctx.stroke();   // 氷の鎖
+      ctx.fillStyle = shade(level.palette.wall, 1.25); ctx.beginPath(); ctx.arc(sw.x, sw.y, 7, 0, 6.28); ctx.fill();   // 支点（氷のマウント）
+      ctx.save(); ctx.translate(bx, by); ctx.rotate(t * 0.6);   // 氷塊（とげのある致死塊）
+      ctx.fillStyle = D.danger; ctx.beginPath();
+      for (let i = 0; i < 14; i++) { const a = (i / 14) * 6.28, rr = i % 2 ? sw.r + 6 : sw.r * 0.62; const px = Math.cos(a) * rr, py = Math.sin(a) * rr; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(230,248,255,0.92)'; ctx.beginPath(); ctx.arc(0, 0, sw.r * 0.34, 0, 6.28); ctx.fill();   // 氷の芯
+      ctx.restore();
+    }
+  }
   function drawBouncy() {  // バンパー（ピンボール式）
     for (const b of level.bouncy) {
       const pu = 1 + Math.sin(performance.now() / 220 + b.x) * 0.12;
@@ -882,6 +971,46 @@
       ctx.beginPath(); ctx.moveTo(x0 + 14, y); ctx.lineTo(x1 - 14, y); ctx.stroke();
       ctx.restore();
     }
+  }
+  // ---- 月の水鏡（lake）の描画 ----
+  function drawLakeShores() {  // ショア（縦の月光石）：内側の縦面に貼り付く
+    const col = level.palette.accent;
+    for (const pl of level.walls) {
+      poly(pl); ctx.fillStyle = hexA(level.palette.wall, 0.96); ctx.fill();
+      ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.strokeStyle = hexA(col, 0.65); ctx.lineWidth = 2.5;
+      poly(pl); ctx.stroke(); ctx.shadowBlur = 0;
+    }
+  }
+  function drawLakeWater() {  // 静かな月の水面＋反射＋きらめき＋波紋
+    if (!level.skips) return;
+    const tm = performance.now() / 1000, col = level.palette.accent;
+    for (const w of level.skips) {
+      const depth = 64, span = w.x1 - w.x0;
+      const gr = ctx.createLinearGradient(0, w.y, 0, w.y + depth);
+      gr.addColorStop(0, hexA(col, 0.18)); gr.addColorStop(1, hexA(col, 0));
+      ctx.fillStyle = gr; ctx.fillRect(w.x0, w.y, span, depth);
+      ctx.strokeStyle = hexA(col, 0.62); ctx.lineWidth = 2; ctx.beginPath();
+      for (let x = w.x0; x <= w.x1; x += 12) { const yy = w.y + Math.sin(x * 0.05 + tm * 1.3) * 1.2; if (x === w.x0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy); }
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      for (let i = 0; i < 5; i++) { const gx = w.x0 + ((i * 97 + tm * 16) % span); ctx.globalAlpha = 0.18 + 0.3 * (Math.sin(tm * 2 + i) + 1) / 2; ctx.beginPath(); ctx.arc(gx, w.y, 1.6, 0, 6.28); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
+    for (const r of level.skipRings) { ctx.strokeStyle = hexA(col, 0.5 * r.life); ctx.lineWidth = r.w || 2; ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r, r.r * 0.32, 0, 0, 6.28); ctx.stroke(); }
+  }
+  function drawLakeLips() {  // 月光の庇（壁ぎわのロブ封じスラブ）：沈んだ岩棚
+    for (const lp of level.lips) {
+      ctx.fillStyle = hexA(level.palette.wall, 0.96); ctx.fillRect(lp.x0, lp.y - 11, lp.x1 - lp.x0, 17);
+      ctx.strokeStyle = hexA(level.palette.accent, 0.32); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(lp.x0, lp.y + 6); ctx.lineTo(lp.x1, lp.y + 6); ctx.stroke();
+    }
+  }
+  function drawLakeGoal() {  // 最上段の月（出口）：ハロー＋淡い満月
+    const g = level.goal, tm = performance.now() / 1000, pulse = 0.5 + 0.5 * Math.sin(tm * 1.5);
+    const halo = ctx.createRadialGradient(g.x, g.y - 10, 4, g.x, g.y - 10, 66);
+    halo.addColorStop(0, hexA('#ffffff', 0.45 + pulse * 0.2)); halo.addColorStop(0.4, hexA(level.palette.accent, 0.3)); halo.addColorStop(1, hexA(level.palette.accent, 0));
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(g.x, g.y - 10, 66, 0, 6.28); ctx.fill();
+    ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 22 + pulse * 10; ctx.fillStyle = '#fbf3d8';
+    ctx.beginPath(); ctx.arc(g.x, g.y - 10, 17, 0, 6.28); ctx.fill(); ctx.shadowBlur = 0;
   }
   function drawSentryCones() {  // 見張りの視線（壁で遮られて見える＝cave描画前に描く）
     if (!level.sentries) return;
@@ -1187,6 +1316,7 @@
     if (flash > 0) flash = Math.max(0, flash - dt / 0.25);
     if (popFlash > 0) popFlash = Math.max(0, popFlash - dt / 0.22);
     if (level && level.hoops) for (const o of level.hoops) if (o.flash > 0) o.flash = Math.max(0, o.flash - dt / 0.45);   // フープの射抜き点滅の減衰
+    if (level && level.skipRings && level.skipRings.length) { for (const r of level.skipRings) { r.r += 130 * dt; r.life -= dt / 0.8; } level.skipRings = level.skipRings.filter(r => r.life > 0); }   // 水紋の拡散＆減衰
     if (outMsg > 0) outMsg = Math.max(0, outMsg - dt);
     if (gameState === 'play' && !alive) { deathT -= dt; if (deathT <= 0) spawn(); }
     if (gameState === 'map') updateMap(dt);
@@ -1214,9 +1344,9 @@
     const q = new URLSearchParams(location.search);
     const lead = document.querySelector('#title .lead');
     if (q.get('pack') === 'new') {
-      playlist = LEVELS.map((l, i) => i).filter(i => ['5-1', '6-1', '7-1'].includes(LEVELS[i].code));
+      playlist = LEVELS.map((l, i) => i).filter(i => ['7-2'].includes(LEVELS[i].code));   // 新ギミック「振り子氷塊」＝大滑降の進化盤
       if (!playlist.length) playlist = null;
-      if (lead && playlist) lead.textContent = '新ステージ3面をあそぶ';
+      if (lead && playlist) lead.textContent = '新ステージをあそぶ';
     } else if (q.get('unlock') === 'all' || q.get('pack') === 'all') {
       freeRoam = true;
       if (lead) lead.textContent = '全ステージ自由に選ぶ';

@@ -47,6 +47,14 @@ const DESIGN = {
     swishRefund: 1,          // ★ きれいに射抜く（スウィッシュ）ごとに回復する飛ばし回数＝精度をフロー継続で報酬
     swishChainPitch: 120,    // 連続スウィッシュで上がる音程＆演出の刻み
     warpFreeze: 5,           // フリースロー・タワー：輪を射抜いて上へワープする瞬間のヒットストップ（フレーム）
+    // ---- 水面（水切り）：静かな月の水面を“浅く速く”擦ると「とぷん」と跳ねて渡る。深い/遅いと静かに沈む（北極星その3＝静かな気持ちよさ）----
+    skipRest: 0.70,          // スキップの反発（縦の跳ね返り。<1で減衰）
+    skipFric: 0.97,          // ★ 横速度の保持（1に近いほど遠くまで滑る＝水を切る伸び）
+    skipLift: 210,           // ★ スキップごとに足す上向き速度＝対岸の“一段上”へ運ぶ月光のリフト
+    skipMaxAngle: 0.92,      // ★ これより急な進入角(rad≈53°)は弾かず沈む。小さいほど“浅さ”を要求＝シビア
+    skipMinSpeed: 320,       // これより遅い進入は沈む（失速＝沈）
+    skipRefund: 1,           // 一段渡りきる（次のショアに乗る）ごとに静かに回復する飛ばし回数
+    lakeLipBounce: 0.4,      // 月光の庇（ロブ封じの反射スラブ）の反発。非スティック＝低く擦って“下を潜る”ルートのみ
   },
   combo: { base: 720, pitchStep: 90 },  // コンボ雫：連続回収で音程上昇
 
@@ -123,10 +131,14 @@ const DESIGN = {
     { palette: { bg: '#07181f', wall: '#10333f', accent: '#5fd6e0', blob: '#ffb14d' } }, // 5-1 せまる水面（水底×藍×水青／琥珀blob）
     { palette: { bg: '#0e0a16', wall: '#241a33', accent: '#c89bff', blob: '#5be0a0' } }, // 6-1 分かれ道（大坑×紫闇×松明／翠blob）
     { palette: { bg: '#08203a', wall: '#1f5a85', accent: '#a9e8ff', blob: '#ff6b4a' } }, // 7-1 大滑降（氷瀑×氷青壁×水晶／緋blob）
+    { palette: { bg: '#06182e', wall: '#1a4e78', accent: '#bfeeff', blob: '#ff7a3d' } }, // 7-2 振り子瀑（より深い蒼氷×水晶白accent×橙緋blob＝揺れる氷塊が映える進化色）
     { palette: { bg: '#1a0e2e', wall: '#352350', accent: '#ffd35e', blob: '#4de0ff' } }, // 8-1 跳躍祭（祝祭紫×黄金×水光blob＝弾けが映える祝祭色）
     { palette: { bg: '#1f0a2a', wall: '#3a1750', accent: '#ff6fae', blob: '#5ef0d0' } }, // 8-2 乱れ咲き（濃紫×薔薇金×新緑blob＝より熱い“咲き乱れ”の難所色）
     { palette: { bg: '#140738', wall: '#34208a', accent: '#ffce3a', blob: '#ff5ad6' } }, // 8-3 百花繚乱（深い王紫×菫青壁×黄金の花×紅紫blob＝最も派手な祝祭フィナーレ）
     { palette: { bg: '#0a1024', wall: '#1a2350', accent: '#8fe9ff', blob: '#ff6a4d' } }, // 9-1 無音（静かな紺夜×石壁×月光の輪accent＝白ネットが映える清色／緋blobで一点の熱）
+    { palette: { bg: '#220a44', wall: '#46228a', accent: '#ffe26a', blob: '#54f0d0' } }, // 10-1 花輪繚乱／第10章 月華（極彩の王紫×宝石アメジスト壁×きらめく花輪金accent＝舞い輪が映える最も豪奢なアンコール／青緑blobで一点の涼）
+    { palette: { bg: '#050a18', wall: '#0e1c30', accent: '#cfe9ff', blob: '#ffcf7a' } }, // 11-1 凪／第11章 水鏡（真夜中の紺墨×沈んだ石×月光銀の水面accent＝静寂の水鏡／温かな琥珀blob＝銀の水面に灯る一点）
+    { palette: { bg: '#071d2e', wall: '#163f5c', accent: '#ffce5e', blob: '#ff5d9e' } }, // 12-1 鉄砲水／第12章 奔流（深い藍の濁流bg×濡れ石の藍壁×金の射出花accent＝迫る水に金の花が映える／緋桃blob＝水面に一点の熱）
   ],
 
   // 目・影など共通
