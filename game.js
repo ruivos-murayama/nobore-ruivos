@@ -67,8 +67,8 @@
     { code: '5-1', world: 5, name: 'せまる水面', sub: 'せり上がる水から登りきれ', maxLaunch: 21, gen: { worldH: 2200, seed: 14, gapBase: 140, gapVar: 42, meander: 95, yStep: 72, nubCount: 6, hazardCount: 1, dangoCount: 6, bouncyCount: 1, sentryCount: 1, cloakCount: 0, gateHalf: 62, riseSpeed: 30, riseAccel: 14, riseMax: 135 } }, // 最短14・水攻め（初速ゆっくり→加速→上限135／急げば逃げ切れる）
     { code: '6-1', world: 6, name: '分かれ道',   sub: '道を選んで登りきれ',     maxLaunch: 60, gen: { worldH: 5600, seed: 8, gapBase: 165, gapVar: 40, meander: 120, yStep: 76, nubCount: 4, hazardCount: 2, dangoCount: 10, bouncyCount: 2, sentryCount: 1, cloakCount: 0, gateHalf: 64, forkCount: 6 } }, // 本道≈56手/近道≈32手（貪欲クライマー計測）・ルート分岐
     { code: '7-1', world: 7, name: '大滑降',     sub: '氷壁を滑り降りろ',       maxLaunch: 90, gen: { worldH: 18000, seed: 5, gapBase: 168, gapVar: 34, meander: 78, yStep: 70, hazardCount: 35, dangoCount: 30, descent: true, slipSpeed: 520 } }, // 滑降（上→下）・優しめ／爽快・5倍長（約18000px）
-    { code: '8-1', world: 8, name: '跳躍祭',     sub: 'ただ、跳ねるだけ',       maxLaunch: 30, gen: { worldH: 2400, seed: 33, gapBase: 170, gapVar: 38, meander: 80, yStep: 72, nubCount: 3, hazardCount: 0, dangoCount: 9, bouncyCount: 5, sentryCount: 0, cloakCount: 0, gateHalf: 72, bumperMove: 0, catapultCount: 4, boostCount: 2 } }, // ★北極星ステージ：危険・ステルス0／カタパルト(射出花)＋バンパー＋気流で“弾けて跳ねる”連鎖だけを純粋に。広い門・潤沢な回数＝縛りで急かさない。最短≈8（カタパルト未使用でも登れる）
-    { code: '8-2', world: 8, name: '乱れ咲き',   sub: '射出花を乗り継いで',     maxLaunch: 22, gen: { worldH: 3000, seed: 19, gapBase: 150, gapVar: 44, meander: 100, yStep: 70, nubCount: 5, hazardCount: 4, dangoCount: 10, bouncyCount: 7, sentryCount: 0, cloakCount: 0, gateHalf: 56, bumperMove: 90, catapultCount: 6, boostCount: 2 } }, // 北極星テイストのまま難度↑：同じ“弾けて跳ねる”を高く長く狭く。射出花6＋バンパー7の長い連鎖／少量トゲで雑な弧を罰する／門狭め＋頂上バンパー往復／回数を締めて連鎖と💧回収を要求。最短≈9（BFS・カタパルト無し／💧10で最大+10回復の安全弁）
+    { code: '8-1', world: 8, name: '跳躍祭',     sub: 'ただ、跳ねるだけ',       maxLaunch: 30, gen: { worldH: 2400, seed: 33, gapBase: 170, gapVar: 38, meander: 80, yStep: 72, nubCount: 3, hazardCount: 0, dangoCount: 9, bouncyCount: 5, sentryCount: 0, cloakCount: 0, gateHalf: 72, bumperMove: 0, catapultCount: 4, boostCount: 0 } }, // ★北極星ステージ：危険・ステルス0／カタパルト(射出花)＋バンパーで“弾けて跳ねる”連鎖だけを純粋に。広い門・潤沢な回数＝縛りで急かさない。最短≈8。※気流(boost)は外した＝気流柱の縦ホバー＆気流×バンパー挟まりのソフトロックを根絶（保険に失速レスキューもエンジン側に常備）
+    { code: '8-2', world: 8, name: '乱れ咲き',   sub: '射出花を乗り継いで',     maxLaunch: 22, gen: { worldH: 3000, seed: 19, gapBase: 150, gapVar: 44, meander: 100, yStep: 70, nubCount: 5, hazardCount: 4, dangoCount: 10, bouncyCount: 5, sentryCount: 0, cloakCount: 0, gateHalf: 56, bumperMove: 90, catapultCount: 6, boostCount: 0 } }, // 北極星テイストのまま難度↑：同じ“弾けて跳ねる”を高く長く狭く。射出花6＋バンパー6の長い連鎖／少量トゲで雑な弧を罰する／門狭め＋頂上バンパー往復／回数を締めて連鎖と💧回収を要求。最短≈10（BFS・カタパルト無し／💧10で最大+10回復の安全弁）。※バンパーは密集による挟まり多発を避け5に（保険に失速レスキュー常備）
   ];
 
   // ---- 状態 ----
@@ -86,6 +86,7 @@
   let launches = 0, outMsg = 0;                 // 飛ばし回数：のこり / 「もう とべない…」演出タイマー
   let winning = false, winT = 0, winFlash = 0, winSpark = 0, winRings = [], winGX = 0, winGY = 0, winHold = 0;  // 到達演出
   let combo = 0, texts = [], boostT = 0, bumpChain = 0, freeze = 0, popFlash = 0;
+  let bestY = 1e9, stallT = 0;   // 失速レスキュー：最高到達(最小y)と、それが更新されない経過時間
   let alert = 0, simTime = 0, alarmPing = 0;   // ステルス：発見メーター / 首振りの時刻 / 警告音タイマー
   let cloakT = 0;                              // 隠れ蓑：残り透明時間
   const aim = { active: false, sx: 0, sy: 0, cx: 0, cy: 0 };
@@ -136,6 +137,7 @@
     blob.vx = 0; blob.vy = 0; blob.stuck = false; blob.nx = 0; blob.ny = -1; blob.ignoreT = 0; blob.plat = -1; blob.slip = false;
     def.ang = 0; def.sx = 1; def.sy = 1; def.vsx = 0; def.vsy = 0; def.offx = 0; def.offy = 0;
     eyes.wide = 0; aim.active = false; alive = true; timeScale = 1; timeScaleTarget = 1; combo = 0; bumpChain = 0; freeze = 0; popFlash = 0;
+    bestY = blob.y; stallT = 0;   // 失速レスキューの基準をリセット
     alert = 0; alarmPing = 0; cloakT = 0;   // simTime は連続させる（首振りは止めない）
     if (level && level.catapults) for (const c of level.catapults) c.cool = 0;   // 射出花のクールダウンを初期化
     launches = level ? level.maxLaunch : 0; outMsg = 0;   // 飛ばし回数は毎リスポーン満タンに戻す
@@ -345,8 +347,12 @@
     if (!blob.stuck) {
       blob.vy += P.gravity * h;
       const dmp = Math.pow(P.airDamping, h); blob.vx *= dmp; blob.vy *= dmp;
+      // 失速レスキュー：最高到達(最小y)が一定時間更新されない＝気流ホバー/バンパー無限バウンド/挟まりで“貼り付けず詰む”状態。気流・バンパー・カタパルトを一時無視し、最寄り壁へ確実に寄せて貼り付かせる（ソフトロック防止／正常な飛行は常に高度更新するので誤発動しない）
+      if (blob.y < bestY - 2) { bestY = blob.y; stallT = 0; } else stallT += h;
+      const trapped = stallT > P.rescueStall;
+      if (trapped) blob.vx = (blob.x < COL / 2 ? -1 : 1) * P.rescueDrive;
       let inBoost = false;
-      for (const bz of level.boosts) if (blob.x > bz.x && blob.x < bz.x + bz.w && blob.y > bz.y && blob.y < bz.y + bz.h) { blob.vx += bz.dx * GM.boostAccel * h; blob.vy += bz.dy * GM.boostAccel * h; inBoost = true; }
+      if (!trapped) for (const bz of level.boosts) if (blob.x > bz.x && blob.x < bz.x + bz.w && blob.y > bz.y && blob.y < bz.y + bz.h) { blob.vx += bz.dx * GM.boostAccel * h; blob.vy += bz.dy * GM.boostAccel * h; inBoost = true; }
       if (inBoost) { const sp = len(blob.vx, blob.vy); if (sp > GM.boostMaxSpeed) { blob.vx *= GM.boostMaxSpeed / sp; blob.vy *= GM.boostMaxSpeed / sp; } boostT += h; if (boostT > 0.08) { boostT = 0; beep(1000, 0.05, 'sine', 0.05, 1500); } }
       if (blob.vy > P.fallClamp) blob.vy = P.fallClamp;
       blob.x += blob.vx * h; blob.y += blob.vy * h;
@@ -356,7 +362,7 @@
       if (blob.y > level.worldH + 250) { die(); return; }
       if (len(blob.x - level.goal.x, blob.y - level.goal.y) < R + P.goalRadius) { winStart(); return; }
 
-      for (const b of level.bouncy) {
+      if (!trapped) for (const b of level.bouncy) {
         const dx = blob.x - b.x, dy = blob.y - b.y, rr = R + b.r;
         if (dx * dx + dy * dy < rr * rr) {
           const d = len(dx, dy) || 1, nx = dx / d, ny = dy / d;
@@ -373,7 +379,7 @@
         }
       }
       // カタパルト（射出花）：入射を無視して固定ベクトルで撃ち出す＝設計された“弾け”の連鎖
-      for (const c of level.catapults) {
+      if (!trapped) for (const c of level.catapults) {
         if (c.cool > 0) { c.cool--; continue; }
         const dx = blob.x - c.x, dy = blob.y - c.y, rr = R + c.r;
         if (dx * dx + dy * dy < rr * rr) {
@@ -405,7 +411,7 @@
       for (let k = 0; k < level.slipWalls.length; k++) { const cc = CAVE.circlePoly(blob.x, blob.y, R, level.slipWalls[k]); if (cc) { c = cc; onSlip = true; break; } }
       if (!c) for (let k = 0; k < level.walls.length; k++) { const cc = CAVE.circlePoly(blob.x, blob.y, R, level.walls[k]); if (cc) { c = cc; break; } }
       if (c) { blob.x += c.nx * c.pen; blob.y += c.ny * c.pen; blob.nx = c.nx; blob.ny = c.ny; blob.slip = onSlip; }
-      else { blob.stuck = false; blob.slip = false; blob.vx = blob.nx * 40; blob.vy = 90; blob.ignoreT = P.launchIgnoreSteps; }   // 板の下端で離脱→落下
+      else { blob.stuck = false; blob.slip = false; blob.vx = blob.nx * 40; blob.vy = 90; blob.ignoreT = P.launchIgnoreSteps; bestY = blob.y; stallT = 0; }   // 板の下端で離脱→落下
       const spray = level.descent ? 3 : (Math.random() < 0.3 ? 1 : 0);   // 滑降は氷しぶき多め＝スピード感
       for (let s = 0; s < spray; s++) particles.push({ x: blob.x - blob.nx * R + rand(-6, 6), y: blob.y - blob.ny * R, vx: blob.nx * rand(-40, 40), vy: level.descent ? rand(-120, -40) : 70, life: 1, color: Math.random() < 0.5 ? '#cfeaff' : '#ffffff', size: rand(2, 4) });   // 氷の粉（滑降は後方へ）
     }
@@ -523,6 +529,7 @@
     const a = aimVel(); if (a.pull < 6) return;
     if (launches <= 0) return;   // 念のため（通常はのこり0で着地した瞬間に失敗判定が入る）
     blob.stuck = false; blob.plat = -1; blob.slip = false; blob.vx = a.vx; blob.vy = a.vy; blob.ignoreT = P.launchIgnoreSteps; bumpChain = 0;
+    bestY = blob.y; stallT = 0;   // 新しい飛行＝失速基準をリセット
     launches--; updateHUD();     // 1回の飛ばしで1消費
     impulseSquash(Math.atan2(a.vy, a.vx), SQ.launchAlong, SQ.launchPerp);
     launchParticles(a.vx, a.vy, a.charge); sfx.launch(a.charge); vibe(D.haptics.launch);
